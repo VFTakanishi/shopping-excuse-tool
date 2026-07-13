@@ -25,8 +25,8 @@ const categoryRules = [
 
 const categoryIntros = {
   fashion: [
-    "身だしなみは趣味ではなく、外に出る自分のコンディション管理です。",
-    "見た目が整うだけで、外出の気分と判断力は妙に安定します。",
+    "身だしなみは趣味というより、外に出る日の調子を整えるためのものです。",
+    "見た目が整うだけで、外に出る気分はけっこう変わります。",
     "服や靴まわりは気分の問題に見えて、実際は出かける前の迷いを減らす道具でもあります。",
     "着る物や履く物がしっくりくる日は、それだけで一日の始まりが少しまともになります。"
   ],
@@ -94,7 +94,7 @@ const sharedTemplates = [
   ({ item, compareAmount, categoryLine }) =>
     `${item}は高く見えても、他の大きな出費と比べると意外と小回りの利く金額です。たとえば${compareAmount}級の支出ほど身構える話ではありません。${categoryLine} それで日々の気分や快適さが増えるなら、充分に説明のつく買い物です。`,
   ({ item, formattedAmount, categoryLine }) =>
-    `${item}に払った${formattedAmount}は、勉強代や経験値の前払いとして考えると急に落ち着いて見えてきます。${categoryLine} 何が自分に効くか実地で知るのも立派な収穫なので、ただの物欲で片づけるには少し惜しいです。`,
+    `${item}に${formattedAmount}を出したのは、勢いだけで片づけるには少し雑です。${categoryLine} 実際に使ってみないと分からない相性もあるので、ただ欲しかっただけで終わらせるには少しもったいない買い物です。`,
   ({ item, perUse100, categoryLine }) =>
     `${item}は100回使うと仮定すれば1回あたり${perUse100}です。${categoryLine} そのたびに「やっぱりこれでよかった」と思えるなら、安いか高いかより、満足の再現性を買ったと考える方がしっくりきます。`,
   ({ item, formattedAmount, categoryLine }) =>
@@ -122,7 +122,7 @@ const categoryTemplates = {
     ({ item, perDay1Year, categoryLine }) =>
       `${item}を1年間使う前提なら1日あたり約${perDay1Year}です。${categoryLine} 毎朝の「なんか決まらない」を減らせるなら、これはおしゃれ代というより機嫌の安定装置としてかなり優秀です。`,
     ({ item, formattedAmount, categoryLine }) =>
-      `${item}に${formattedAmount}を出したのは、見栄より先に「ちゃんとして見える自分」を買った感覚に近いです。${categoryLine} 外に出るたび少し楽になるなら、その恩恵は値札より長持ちします。`,
+      `${item}に${formattedAmount}を出したのは、見栄というより「これなら安心して履ける」と思える一足を選んだ感覚に近いです。${categoryLine} 外に出るたび少し気分が上がるなら、その分はちゃんと回収できます。`,
     ({ item, perDay3Years, categoryLine }) =>
       `3年間付き合えるなら、${item}は1日あたり約${perDay3Years}です。${categoryLine} 履くたび着るたびに迷いが減るなら、見た目の問題を超えて朝の負荷軽減として優秀です。`
   ],
