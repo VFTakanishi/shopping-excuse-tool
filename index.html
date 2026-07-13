@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f6f7f8" />
+    <title>買い物言い訳ツール</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main class="page">
+      <section class="card" aria-labelledby="app-title">
+        <p class="eyebrow">今日の出費に、今日の理屈を。</p>
+        <h1 id="app-title">買い物言い訳ツール</h1>
+        <p class="description">
+          買った物と金額を入力すると、もっともらしい言い訳を考えます。
+        </p>
+
+        <form id="excuse-form" class="form" novalidate>
+          <div class="field">
+            <label for="item-name">商品名</label>
+            <input
+              id="item-name"
+              name="itemName"
+              type="text"
+              inputmode="text"
+              placeholder="スニーカー"
+              autocomplete="off"
+            />
+            <p id="item-error" class="error" aria-live="polite"></p>
+          </div>
+
+          <div class="field">
+            <label for="amount">金額</label>
+            <div class="amount-input">
+              <input
+                id="amount"
+                name="amount"
+              type="number"
+              inputmode="numeric"
+              placeholder="30000"
+              min="1"
+              step="1"
+              enterkeyhint="done"
+            />
+              <span class="unit" aria-hidden="true">円</span>
+            </div>
+            <p id="amount-error" class="error" aria-live="polite"></p>
+          </div>
+
+          <button id="generate-button" class="primary-button" type="submit">
+            言い訳を考える
+          </button>
+        </form>
+
+        <section
+          id="result-section"
+          class="result hidden"
+          aria-live="polite"
+          aria-label="言い訳の結果"
+        >
+          <div class="result-header">
+            <h2>今回の言い訳</h2>
+            <span id="copy-status" class="copy-status" role="status" aria-live="polite"></span>
+          </div>
+          <p id="result-text" class="result-text"></p>
+          <div class="result-actions">
+            <button id="regenerate-button" class="secondary-button" type="button">
+              別の言い訳を考える
+            </button>
+            <button id="copy-button" class="secondary-button" type="button">
+              コピーする
+            </button>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <script src="script.js"></script>
+  </body>
+</html>
