@@ -17,6 +17,10 @@ const categoryRules = [
   { name: "work", keywords: ["工具", "パソコン", "pc", "ノートpc", "スマホ", "iphone", "ipad", "キーボード", "マウス", "モニター"] },
   { name: "food", keywords: ["食事", "焼肉", "寿司", "ラーメン", "カフェ", "ランチ", "ディナー", "ごはん", "弁当", "丼", "海鮮丼", "定食", "うなぎ"] },
   { name: "fun", keywords: ["ゲーム", "漫画", "フィギュア", "アニメ", "プラモ", "小説", "dvd", "blu-ray", "ライブグッズ"] },
+  { name: "adultService", keywords: ["風俗", "ソープ", "ヘルス", "デリヘル", "ピンサロ", "ホテヘル"] },
+  { name: "sponsorship", keywords: ["スポンサー", "スポンサー枠", "支援", "投げ銭", "スパチャ", "fanbox", "patreon", "メンバーシップ"] },
+  { name: "premiumTransit", keywords: ["グリーン車", "プレミアムシート", "アップグレード席", "ファーストクラス", "ビジネスクラス"] },
+  { name: "personalService", keywords: ["整体", "マッサージ", "エステ", "もみほぐし", "リラク", "クリーニング", "パーソナル", "ジム", "サウナ"] },
   { name: "travel", keywords: ["旅行", "ホテル", "チケット", "航空券", "新幹線", "宿", "ツアー"] },
   { name: "beauty", keywords: ["美容", "化粧品", "コスメ", "美容液", "日焼け止め", "スキンケア", "香水"] },
   { name: "home", keywords: ["家電", "家具", "掃除機", "冷蔵庫", "椅子", "デスク", "照明", "電子レンジ"] },
@@ -25,10 +29,10 @@ const categoryRules = [
 
 const categoryIntros = {
   fashion: [
-    "身だしなみは趣味というより、外に出る日の調子を整えるためのものです。",
-    "見た目が整うだけで、外に出る気分はけっこう変わります。",
-    "服や靴まわりは気分の問題に見えて、実際は出かける前の迷いを減らす道具でもあります。",
-    "着る物や履く物がしっくりくる日は、それだけで一日の始まりが少しまともになります。"
+    "靴が決まると、出かけるときの気分がだいぶ違います。",
+    "履きやすくて合わせやすい靴は、結局いちばん出番が多くなります。",
+    "気に入っている靴があるだけで、外に出るハードルは少し下がります。",
+    "よく履く靴なら、値段だけで高い安いを決めるのも違います。"
   ],
   work: [
     "効率に関わる道具は、気合いでは埋められない時間差を埋めてくれます。",
@@ -37,16 +41,36 @@ const categoryIntros = {
     "道具で減らせるストレスは意外と多く、積み上がると集中力の差になります。"
   ],
   food: [
-    "食べることは娯楽でもありますが、同時に体力と機嫌の立て直しでもあります。",
-    "ちゃんと満たされる食事は、気力を買っていると言っても大げさではありません。",
-    "食事はただの消費ではなく、その後のテンションを立て直す調整でもあります。",
-    "満足できる一食は、その日全体の雑さを少し回収してくれることがあります。"
+    "ちゃんと満足できるごはんは、その日の気分まで変わります。",
+    "おいしいものを食べた日は、それだけで少し機嫌がよくなります。",
+    "食事はただ空腹を埋めるだけじゃなくて、気分を戻す役目もあります。",
+    "満足できる一食なら、その金額に意味はあります。"
   ],
   fun: [
     "娯楽は贅沢に見えて、実は精神衛生の保守点検みたいなものです。",
     "好きなものに触れる時間は、雑に削ると生活全体がしょんぼりします。",
     "趣味に使うお金は派手に見えても、心の摩耗を減らす意味ではかなり実務的です。",
     "楽しい時間を確保する出費は、後回しにするとじわじわ生活の色が薄くなります。"
+  ],
+  adultService: [
+    "こういう出費は胸を張って説明する類いではないですが、雑に片づけると逆に実感から遠ざかります。",
+    "欲だけで終わる話に見えても、気分の切り替えや息抜きとして処理している人は案外多いです。",
+    "人には言いにくい出費でも、その場でちゃんと気が晴れたなら意味がゼロとは言えません。"
+  ],
+  sponsorship: [
+    "応援したいものにお金を使うなら、それだけで十分理由になります。",
+    "スポンサー枠は物が残る買い方ではなくても、自分が納得して払っているならそれでいいです。",
+    "好きで応援しているものに使ったお金なら、無駄と決めつける話でもありません。"
+  ],
+  premiumTransit: [
+    "移動で疲れすぎないことにお金を使うのは、思ったよりちゃんと意味があります。",
+    "座れる、静か、ラク、その差で目的地に着いた後の調子が変わります。",
+    "移動を少しラクにする出費は、贅沢というより消耗を減らすためのものです。"
+  ],
+  personalService: [
+    "体がラクになる出費は、物が残らなくても十分元を取りにいけます。",
+    "体の重さやだるさが減るなら、その時点でかなり意味があります。",
+    "自分の調子が戻るなら、サービス代というより必要経費に近いです。"
   ],
   travel: [
     "体験に使ったお金は、物より先に消えるようでいて意外と長く残ります。",
@@ -57,7 +81,7 @@ const categoryIntros = {
   beauty: [
     "自己管理に関わる出費は、派手さよりも日々の安心感を買う側面があります。",
     "整えるための費用は、気合いより再現性があるので案外まじめです。",
-    "美容まわりはぜいたくに見えて、実際は気分の土台を整える定期メンテでもあります。",
+    "美容まわりは贅沢に見えて、実際は気分の土台を整える定期メンテでもあります。",
     "見た目の調子が安定すると、余計な気疲れが減るので思ったより実利があります。"
   ],
   home: [
@@ -118,13 +142,13 @@ const sharedTemplates = [
 const categoryTemplates = {
   fashion: [
     ({ item, perUse100, categoryLine }) =>
-      `${item}は100回使うと仮定すれば1回あたり${perUse100}です。${categoryLine} 出かけるたびに服装の迷いが減って気分まで少し上向くなら、見た目のためというより外出の調子を整える費用です。`,
+      `${item}は100回履くと仮定すれば1回あたり${perUse100}です。${categoryLine} そのたびにちゃんと履くなら、けして高すぎる買い物ではありません。`,
     ({ item, perDay1Year, categoryLine }) =>
-      `${item}を1年間使う前提なら1日あたり約${perDay1Year}です。${categoryLine} 毎朝の「なんか決まらない」を減らせるなら、これはおしゃれ代というより機嫌の安定装置としてかなり優秀です。`,
+      `${item}を1年間しっかり履く前提なら1日あたり約${perDay1Year}です。${categoryLine} それで毎回気分よく出かけられるなら、十分元は取れます。`,
     ({ item, formattedAmount, categoryLine }) =>
-      `${item}に${formattedAmount}を出したのは、見栄というより「これなら安心して履ける」と思える一足を選んだ感覚に近いです。${categoryLine} 外に出るたび少し気分が上がるなら、その分はちゃんと回収できます。`,
+      `${item}に${formattedAmount}を出したのは、安い靴を何足も買い直すより、ちゃんと履く一足を選んだと思えば納得しやすいです。${categoryLine} よく履くなら、その分ちゃんと回収できます。`,
     ({ item, perDay3Years, categoryLine }) =>
-      `3年間付き合えるなら、${item}は1日あたり約${perDay3Years}です。${categoryLine} 履くたび着るたびに迷いが減るなら、見た目の問題を超えて朝の負荷軽減として優秀です。`
+      `3年くらい履けるなら、${item}は1日あたり約${perDay3Years}です。${categoryLine} それで出かけるたびに気分が上がるなら、むしろ安いです。`
   ],
   work: [
     ({ item, perUse100, categoryLine }) =>
@@ -138,15 +162,15 @@ const categoryTemplates = {
   ],
   food: [
     ({ item, formattedAmount, categoryLine }) =>
-      `${item}に${formattedAmount}を払ったのは、空腹を埋めただけではなく、ちゃんと満たされた時間を買ったと考えると筋が通ります。${categoryLine} 変に妥協してずっと微妙な気分を引きずるより、その場でしっかり回復した方が一日全体はむしろ平和です。`,
+      `${item}に${formattedAmount}を払ったのは、ただ食べるためというより、ちゃんと満足するためです。${categoryLine} おいしく食べて気分まで上がったなら、それで十分元は取れています。`,
     ({ item, formattedAmount, categoryLine }) =>
-      `${formattedAmount}の${item}は安いとは言いませんが、気分転換と体力回復をまとめて済ませたと思えば急に納得感が出てきます。${categoryLine} ただ食べたというより、今日はこれで機嫌を立て直したと言い張れる種類の出費です。`,
+      `${formattedAmount}の${item}は安いとは言いませんが、ちゃんと満足できたなら高すぎるとも言えません。${categoryLine} 変に安く済ませて物足りないより、食べたいものを食べた方がすっきりします。`,
     ({ item, categoryLine, compareAmount }) =>
-      `${item}は一食として見ると強気でも、後悔の残る中途半端な出費を何回も重ねるよりは話が早いです。たとえば${compareAmount}級の大きな買い物と違って傷は浅く、満足はその日のうちに回収できます。${categoryLine}`,
+      `${item}は一食として見ると強気でも、${compareAmount}級の大きな買い物に比べればそこまで身構える話ではありません。${categoryLine} その場で満足できるなら、ちゃんと意味のある出費です。`,
     ({ item, formattedAmount, categoryLine }) =>
-      `${formattedAmount}の${item}は財布には刺さりますが、「今日はこれでいいや」で終わらせなかった満足感まで込みなら話は変わります。${categoryLine} 食べて終わりではなく、気分を立て直した時点でかなり役目を果たしています。`,
+      `${formattedAmount}の${item}は安くはなくても、「食べてよかった」と思えたなら十分です。${categoryLine} ちゃんと満足できたなら、それでこの出費は成立しています。`,
     ({ item, categoryLine }) =>
-      `${item}はぜいたく寄りに見えても、ちゃんとおいしいものを食べた日はその後の雑な間食や微妙な不機嫌を防げることがあります。${categoryLine} そう考えると、一食ぶん以上の仕事をしていると言ってもそこまで無茶ではありません。`
+      `${item}は贅沢寄りに見えても、ちゃんとおいしいものを食べた日はそのあとまで気分よく過ごせます。${categoryLine} それなら、ただ高いだけの出費ではありません。`
   ],
   fun: [
     ({ item, perUse100, categoryLine }) =>
@@ -157,6 +181,38 @@ const categoryTemplates = {
       `${item}の余韻を1年間で薄く広く楽しむ前提なら、1日あたり約${perDay1Year}です。${categoryLine} 生活のどこかに「これ好きなんだよな」があるだけで、案外ちゃんと踏ん張れます。`,
     ({ item, formattedAmount, categoryLine }) =>
       `${formattedAmount}の${item}は冷静に見ると趣味の出費ですが、逆に言えば冷静さを保つための趣味でもあります。${categoryLine} 心のガソリンが切れた状態で全部を回すより、よほど筋がいいです。`
+  ],
+  adultService: [
+    ({ item, formattedAmount, categoryLine }) =>
+      `${item}に${formattedAmount}を使ったのは、胸を張れる話ではなくても、気分転換として見ればそこまで意味不明な出費ではありません。${categoryLine} 変に引きずるくらいなら、そこで切り替えができた時点で役目は果たしています。`,
+    ({ item, formattedAmount, categoryLine }) =>
+      `${formattedAmount}の${item}は人に説明しづらいだけで、自分の中で息抜きとして処理できているなら話は別です。${categoryLine} ずっと我慢して変な方向にこじらせるより、短く消化して終わるならまだ平和です。`,
+    ({ item, compareAmount, categoryLine }) =>
+      `${item}は褒められる出費ではなくても、${compareAmount}級の大ごとになるわけでもなく、その場で気持ちに区切りがつくなら一応の理屈は立ちます。${categoryLine}`
+  ],
+  sponsorship: [
+    ({ item, formattedAmount, categoryLine }) =>
+      `${item}に${formattedAmount}を出したのは、物を買ったというより応援の気持ちにお金を使った形です。${categoryLine} 自分が納得して払っているなら、それで十分です。`,
+    ({ item, formattedAmount, categoryLine }) =>
+      `${formattedAmount}の${item}は実用品ではなくても、「応援したいから払う」でちゃんと筋が通ります。${categoryLine} 好きで払っているなら、無理に損得だけで見る必要はありません。`,
+    ({ item, formattedAmount, categoryLine }) =>
+      `${formattedAmount}の${item}は物が残る使い方ではなくても、自分が好きなものを支えた感覚はちゃんと残ります。${categoryLine} そう思えているなら、十分意味のあるお金の使い方です。`
+  ],
+  premiumTransit: [
+    ({ item, formattedAmount, categoryLine }) =>
+      `${item}に${formattedAmount}を払ったのは、贅沢というより移動で疲れないためです。${categoryLine} 着いたあとにちゃんと動けるなら、結果的に得です。`,
+    ({ item, formattedAmount, categoryLine }) =>
+      `${formattedAmount}の${item}は高く見えても、移動でぐったりしないだけで意味があります。${categoryLine} 目的地に着いてからちゃんと動けるなら、その分は回収できます。`,
+    ({ item, formattedAmount, categoryLine }) =>
+      `${item}に${formattedAmount}を足したのは、席の違いというより体力を残すためです。${categoryLine} 移動で潰れずに済むなら、必要な経費として十分ありです。`
+  ],
+  personalService: [
+    ({ item, formattedAmount, categoryLine }) =>
+      `${item}に${formattedAmount}を払ったのは、その場しのぎではなく体をちゃんと戻すためです。${categoryLine} 受けたあとに体がラクになって動けるなら、結果的に得しています。`,
+    ({ item, perDay1Year, categoryLine }) =>
+      `${item}を1年間の中で何度か使う前提なら、1日あたり約${perDay1Year}です。${categoryLine} 体が整ってラクになって、そのあと動けるなら普通に元は取れます。`,
+    ({ item, formattedAmount, categoryLine }) =>
+      `${formattedAmount}の${item}は物が残らないぶん高く見えますが、体が軽くなって仕事や生活が回りやすくなるなら高くありません。${categoryLine} その後の生産性まで含めると、むしろ得です。`
   ],
   travel: [
     ({ item, formattedAmount, categoryLine }) =>
@@ -170,13 +226,13 @@ const categoryTemplates = {
   ],
   beauty: [
     ({ item, perDay1Year, categoryLine }) =>
-      `${item}を1年間使う前提なら1日あたり約${perDay1Year}です。${categoryLine} 毎日の「ちょっと気になる」を減らせるなら、これはぜいたくというより自己管理を続けるための実務費です。`,
+      `${item}を1年間使う前提なら1日あたり約${perDay1Year}です。${categoryLine} 毎日の「ちょっと気になる」を減らせるなら、これは贅沢というより自己管理を続けるための実務費です。`,
     ({ item, formattedAmount, categoryLine }) =>
       `${formattedAmount}の${item}は派手に見えても、見た目と気分の両方を整える道具だと思えば説明はつきます。${categoryLine} 調子がいい日の再現率を上げるなら、十分まじめな買い物です。`,
     ({ item, perDay3Years, categoryLine }) =>
       `3年間のうち使える期間をならして考えると、${item}は1日あたり約${perDay3Years}です。${categoryLine} ちょっとした不安や気後れを減らせるなら、かなり実務寄りの出費です。`,
     ({ item, formattedAmount, categoryLine }) =>
-      `${item}に${formattedAmount}を使うのはぜいたくに見えますが、毎回の身支度を少しスムーズにする装備だと思えば納得しやすいです。${categoryLine} ちゃんと整っている感覚は、それだけで一日のノイズを減らします。`
+      `${item}に${formattedAmount}を使うのは贅沢に見えますが、毎回の身支度を少しスムーズにする装備だと思えば納得しやすいです。${categoryLine} ちゃんと整っている感覚は、それだけで一日のノイズを減らします。`
   ],
   home: [
     ({ item, perDay3Years, categoryLine }) =>
@@ -210,20 +266,36 @@ const categoryTemplates = {
 
 const categoryClosers = {
   fashion: [
-    "見た目を整える出費は、気分の波まで少し均してくれるのが地味に効きます。",
-    "外に出る自分が少しまともになるなら、これは飾りではなく実用品寄りです。"
+    "ちゃんと履くなら、値段ぶんは十分返ってきます。",
+    "出番が多い一足なら、高いというほどでもありません。"
   ],
   work: [
     "仕事道具は、一度ちゃんと噛み合うと想像以上に何度も回収してくれます。",
     "作業が止まる回数を減らせるだけでも、数字以上の価値があります。"
   ],
   food: [
-    "おいしい一食で立て直せる日があるなら、それは十分に意味のある出費です。",
-    "その日の機嫌と体力をまとめて救済したと思えば、かなり仕事をしています。"
+    "ちゃんと満足できたなら、それで十分です。",
+    "食べて気分が上がったなら、そのお金には意味があります。"
   ],
   fun: [
     "楽しみを後回しにしすぎないのは、意外と立派な生活防衛です。",
     "好きなものがちゃんと効くなら、それは浪費ではなく回復手段です。"
+  ],
+  adultService: [
+    "人には言いにくくても、自分の中でちゃんと切り替えになっているならそれなりに仕事はしています。",
+    "少なくとも、あとまで引きずるよりその場で区切りがついたなら意味はあります。"
+  ],
+  sponsorship: [
+    "応援したくて払ったなら、それは無駄ではありません。",
+    "自分で納得して出したお金なら、それで十分です。"
+  ],
+  premiumTransit: [
+    "移動で疲れないだけで、その後の動きやすさが全然違います。",
+    "現地でちゃんと動けるなら、その差にお金を払う意味はあります。"
+  ],
+  personalService: [
+    "体が整ってラクになるなら、その時点でかなり回収できています。",
+    "そのあとちゃんと動けるなら、十分元は取れます。"
   ],
   travel: [
     "あとから思い出して得するタイプの出費は、数字以上にコスパが読みにくくて強いです。",
@@ -305,12 +377,21 @@ function buildItemPhrase(itemName) {
   return itemName.trim().normalize("NFKC").replace(/\s+/g, " ");
 }
 
+const strictCategoryPools = {
+  food: "categoryOnly",
+  travel: "categoryOnly",
+  adultService: "categoryOnly",
+  sponsorship: "categoryOnly",
+  premiumTransit: "categoryOnly",
+  personalService: "categoryOnly"
+};
+
 function buildExcuseVariant(itemName, amount) {
   const item = buildItemPhrase(itemName);
   const category = detectCategory(item);
   const usedParts = new Set();
   const categoryLine = pickUnique(categoryIntros[category] || categoryIntros.generic, usedParts);
-  const categoryOnly = category === "food" || category === "travel";
+  const categoryOnly = strictCategoryPools[category] === "categoryOnly";
   const templatePool = categoryOnly
     ? [...(categoryTemplates[category] || categoryTemplates.generic)]
     : [...(categoryTemplates[category] || []), ...sharedTemplates];
@@ -333,8 +414,9 @@ function buildExcuseVariant(itemName, amount) {
     compareAmount,
     categoryLine
   });
-  const addCloser = Math.random() < 0.7 && excuse.length < 118;
-  const addTagLine = Math.random() < 0.25 && excuse.length < 102;
+  const allowExtraLines = !["sponsorship", "premiumTransit"].includes(category);
+  const addCloser = allowExtraLines && Math.random() < 0.7 && excuse.length < 118;
+  const addTagLine = allowExtraLines && Math.random() < 0.25 && excuse.length < 102;
 
   if (addCloser) {
     excuse += ` ${bridge}、${closer}`;
