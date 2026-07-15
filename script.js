@@ -13,7 +13,7 @@ const generationErrorText = document.getElementById("generation-error-text");
 
 let lastExcuse = "";
 let copyTimerId = null;
-const APP_VERSION = "2026.07.15-logic-2";
+const APP_VERSION = "2026.07.15-logic-3";
 
 console.info(`Shopping Excuse Tool ${APP_VERSION}`);
 
