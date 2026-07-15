@@ -13,7 +13,7 @@ const generationErrorText = document.getElementById("generation-error-text");
 
 let lastExcuse = "";
 let copyTimerId = null;
-const APP_VERSION = "2026.07.15-logic-3";
+const APP_VERSION = "2026.07.15-logic-4";
 
 console.info(`Shopping Excuse Tool ${APP_VERSION}`);
 
@@ -46,6 +46,10 @@ const CATEGORY_LABELS = {
   gameEntertainment: "娯楽",
   event: "イベント・体験",
   dailyGoods: "日用品",
+  stationery: "文房具・筆記具",
+  kitchenGoods: "キッチン用品・食器",
+  furniture: "家具・収納",
+  generalHouseholdItem: "小型生活用品",
   timeSavingService: "時短サービス",
   sponsorship: "スポンサー・応援",
   creatorSupport: "配信者支援",
@@ -59,6 +63,16 @@ const CATEGORY_LABELS = {
 };
 
 const AMBIGUOUS_INPUTS = {
+  商品: "「鉛筆」「マグカップ」のように、用途が分かる名前で入力してください。",
+  用品: "「文房具」「キッチン用品」のように、何の用品か分かる名前で入力してください。",
+  グッズ: "「ライブグッズ」のように、何のグッズか分かる名前で入力してください。",
+  部品: "「ブレーキ部品」「洗濯機の部品」のように、対象が分かる名前で入力してください。",
+  道具: "「工具」「調理道具」のように、何に使う道具か分かる名前で入力してください。",
+  何か: "何を買ったか分かる名前で入力してください。",
+  アイテム: "「ゲームアイテム」のように、内容が分かる名前で入力してください。",
+  買い物: "買った物の名前が分かる形で入力してください。",
+  その他: "「その他」ではなく、買った物の名前を具体的に入力してください。",
+  物: "何の物か分かる名前で入力してください。",
   オイル: "「エンジンオイル」や「ヘアオイル」のように、用途が分かる名前で入力してください。",
   チケット: "「ライブチケット」や「映画チケット」のように、内容が分かる名前で入力してください。",
   バッグ: "",
@@ -165,6 +179,82 @@ const WORDS = {
     "コース",
     "海鮮丼"
   ],
+  stationery: [
+    "鉛筆",
+    "シャープペン",
+    "シャープペンシル",
+    "ボールペン",
+    "万年筆",
+    "筆記具",
+    "ペン",
+    "消しゴム",
+    "ノート",
+    "手帳",
+    "メモ帳",
+    "定規",
+    "ハサミ",
+    "カッター",
+    "ホッチキス",
+    "付箋",
+    "ファイル",
+    "バインダー",
+    "電卓",
+    "文房具",
+    "鉛筆削り"
+  ],
+  kitchenGoods: [
+    "マグカップ",
+    "コップ",
+    "皿",
+    "茶碗",
+    "箸",
+    "スプーン",
+    "フォーク",
+    "包丁",
+    "フライパン",
+    "鍋",
+    "まな板",
+    "水筒",
+    "弁当箱",
+    "食器",
+    "調理器具"
+  ],
+  furniture: [
+    "椅子",
+    "机",
+    "テーブル",
+    "本棚",
+    "棚",
+    "収納箱",
+    "収納ケース",
+    "タンス",
+    "ベッド",
+    "ソファ",
+    "マットレス",
+    "枕",
+    "布団",
+    "カーテン",
+    "ゴミ箱"
+  ],
+  generalHouseholdItem: [
+    "傘",
+    "タオル",
+    "ハンカチ",
+    "財布",
+    "キーホルダー",
+    "充電器",
+    "ケーブル",
+    "延長コード",
+    "電池",
+    "時計",
+    "置き時計",
+    "ライト",
+    "懐中電灯",
+    "体温計",
+    "ドライバー",
+    "ハンマー",
+    "踏み台"
+  ],
   dailyGoods: ["シャンプー", "ボディソープ", "洗剤", "歯ブラシ", "ティッシュ", "コンビニ弁当", "日用品"],
   timeSavingService: ["家事代行", "掃除代行", "時短サービス", "代行サービス", "宅配クリーニング"],
   beautyProduct: ["ヘアオイル", "化粧品", "コスメ", "美容液", "スキンケア", "薬用シャンプー", "ヘアミルク"],
@@ -217,6 +307,10 @@ const CATEGORY_META = {
   gameEntertainment: { suggestion: "「PCゲーム」のように娯楽内容が分かる名前で入力してください。" },
   event: { suggestion: "「ライブチケット」のように内容が分かる名前で入力してください。" },
   dailyGoods: { suggestion: "「シャンプー」のように日用品名が分かる名前で入力してください。" },
+  stationery: { suggestion: "「鉛筆」「ボールペン」のように文房具名が分かる名前で入力してください。" },
+  kitchenGoods: { suggestion: "「マグカップ」「フライパン」のように内容が分かる名前で入力してください。" },
+  furniture: { suggestion: "「椅子」「机」のように家具名が分かる名前で入力してください。" },
+  generalHouseholdItem: { suggestion: "「傘」「充電器」のように物の名前が分かる形で入力してください。" },
   timeSavingService: { suggestion: "「家事代行」のように内容が分かる名前で入力してください。" },
   sponsorship: { suggestion: "「スポンサー枠」のように支援内容が分かる名前で入力してください。" },
   creatorSupport: { suggestion: "「スパチャ」「投げ銭」のように支援内容が分かる名前で入力してください。" },
@@ -494,6 +588,34 @@ const CATEGORY_DEFINITIONS = {
         `${item}に${formattedAmount}は高く見えても、日常の作業を止めずに済んで失敗や買い直しを減らせるなら、十分説明のつく支出です。`
     ]
   },
+  stationery: {
+    templates: [
+      (data) => buildStationeryExcuse(data, 0),
+      (data) => buildStationeryExcuse(data, 1),
+      (data) => buildStationeryExcuse(data, 2)
+    ]
+  },
+  kitchenGoods: {
+    templates: [
+      (data) => buildKitchenGoodsExcuse(data, 0),
+      (data) => buildKitchenGoodsExcuse(data, 1),
+      (data) => buildKitchenGoodsExcuse(data, 2)
+    ]
+  },
+  furniture: {
+    templates: [
+      (data) => buildFurnitureExcuse(data, 0),
+      (data) => buildFurnitureExcuse(data, 1),
+      (data) => buildFurnitureExcuse(data, 2)
+    ]
+  },
+  generalHouseholdItem: {
+    templates: [
+      (data) => buildGeneralHouseholdExcuse(data, 0),
+      (data) => buildGeneralHouseholdExcuse(data, 1),
+      (data) => buildGeneralHouseholdExcuse(data, 2)
+    ]
+  },
   timeSavingService: {
     templates: [
       ({ item, formattedAmount }) =>
@@ -576,18 +698,16 @@ const CATEGORY_DEFINITIONS = {
   },
   otherProduct: {
     templates: [
-      ({ item, formattedAmount }) =>
-        `${item}に${formattedAmount}は一度の支出としては大きめです。ただ、これが何に効く買い物なのかが見えないままだと、買い直し回避なのか時短なのかも説明できません。用途まで言えないなら、金額を正当化する材料が足りません。`,
-      ({ item, formattedAmount }) =>
-        `${formattedAmount}の${item}は、商品名だけでは比較相手を置きにくいです。何を減らせる物なのか、どこで使う物なのかが分からないと、筋道だった言い訳までは組み立てられません。`
+      (data) => buildGenericProductExcuse(data, 0),
+      (data) => buildGenericProductExcuse(data, 1),
+      (data) => buildGenericProductExcuse(data, 2)
     ]
   },
   otherService: {
     templates: [
-      ({ item, formattedAmount }) =>
-        `${item}に${formattedAmount}は単発の出費として見れば済みますが、何を任せたサービスなのかが見えないと比較ができません。時間短縮なのか手間回避なのかが言えない以上、この名前だけでロジックを立てるのは厳しいです。`,
-      ({ item, formattedAmount }) =>
-        `${formattedAmount}の${item}は金額だけなら評価しにくいものの、内容が曖昧なままでは正当化の軸が作れません。別の手段より何がラクだったのかまで言えないなら、言い訳としては弱いままです。`
+      (data) => buildGenericServiceExcuse(data, 0),
+      (data) => buildGenericServiceExcuse(data, 1),
+      (data) => buildGenericServiceExcuse(data, 2)
     ]
   }
 };
@@ -638,6 +758,10 @@ const CATEGORY_REASON_PATTERNS = {
   premiumTransit: [/体力/, /コンディション/, /普通席/, /到着後/, /休憩/],
   travelStay: [/滞在時間/, /日帰り/, /日程/, /宿代/, /移動代/],
   food: [/食事/, /場所/, /コース/, /移動/, /時間/],
+  stationery: [/筆記具/, /文房具/, /通常品/, /用途/, /数量/, /仕様/],
+  kitchenGoods: [/調理/, /食器/, /耐久/, /片付け/, /日常/],
+  furniture: [/家具/, /収納/, /作業姿勢/, /買い替え/, /空間/],
+  generalHouseholdItem: [/生活用品/, /仕様/, /買い直し/, /手間/, /日常/],
   shoes: [/履く/, /出番/, /外出/, /靴/, /足に合/],
   fashionWear: [/着回し/, /組み合わせ/, /定番/, /毎年/, /服/],
   bag: [/荷物/, /入れ替え/, /通勤/, /休日/, /バッグ/],
@@ -665,8 +789,8 @@ const CATEGORY_REASON_PATTERNS = {
   fashionRepair: [/修理/, /買い替え/, /寿命/, /使い続け/, /傷み/],
   genericRepair: [/修理/, /買い替え/, /使えない時間/, /戻す/, /維持/],
   interior: [/部屋/, /空間/, /印象/, /飾り/, /置く/],
-  otherProduct: [/用途/, /比較/, /買い直し/, /時短/],
-  otherService: [/時間短縮/, /手間/, /別の手段/, /サービス/]
+  otherProduct: [/用途/, /比較/, /条件/, /品質/, /仕様/, /数量/],
+  otherService: [/時間短縮/, /手間/, /別の手段/, /サービス/, /内容/]
 };
 
 const POSITIVE_COMPARISON = /比べ|比較|より|単純比較|別の|まとめて|買い替え|都度|普通席|外注|交通費|飲食費|安い物|純正/;
@@ -759,7 +883,12 @@ function detectConsumableType(normalizedItemName, categoryName) {
     return "consumable";
   }
 
-  if (["homeDevice", "healthDevice", "shoes", "fashionWear", "bag", "fashionAccessory", "workTool", "interior"].includes(categoryName)) {
+  if (categoryName === "stationery") {
+    const subtype = detectStationeryTrait(normalizedItemName);
+    return ["pencil", "pen", "eraser", "paper"].includes(subtype) ? "consumable" : "durable";
+  }
+
+  if (["homeDevice", "healthDevice", "shoes", "fashionWear", "bag", "fashionAccessory", "workTool", "interior", "kitchenGoods", "furniture", "generalHouseholdItem"].includes(categoryName)) {
     return "durable";
   }
 
@@ -788,6 +917,524 @@ function calculateUnitCost(amount, billingPeriod) {
   }
 
   return "";
+}
+
+function detectPriceLevel(amount, categoryName) {
+  const thresholds = {
+    stationery: [500, 3000, 10000],
+    kitchenGoods: [3000, 10000, 30000],
+    furniture: [10000, 50000, 150000],
+    generalHouseholdItem: [2000, 10000, 30000],
+    fashionAccessory: [5000, 30000, 100000],
+    bag: [10000, 30000, 100000],
+    homeDevice: [5000, 30000, 100000],
+    workTool: [5000, 30000, 100000]
+  };
+  const [low, medium, high] = thresholds[categoryName] || [1000, 10000, 50000];
+
+  if (amount < low) {
+    return "low";
+  }
+
+  if (amount < medium) {
+    return "medium";
+  }
+
+  if (amount < high) {
+    return "high";
+  }
+
+  return "veryHigh";
+}
+
+function getPriceRecognition(categoryName, priceLevel, comparisonLabel) {
+  if (priceLevel === "veryHigh") {
+    return `${comparisonLabel}として見れば高額です`;
+  }
+
+  if (priceLevel === "high") {
+    return `${comparisonLabel}として見ると高めです`;
+  }
+
+  if (priceLevel === "medium") {
+    return `${comparisonLabel}として見ると安い方ではありません`;
+  }
+
+  return `${comparisonLabel}としてはそこまで強い金額ではありません`;
+}
+
+function flattenKeywordGroups() {
+  return [
+    WORDS.stationery,
+    WORDS.kitchenGoods,
+    WORDS.furniture,
+    WORDS.generalHouseholdItem,
+    WORDS.vehiclePurchase,
+    WORDS.vehicleMaintenance,
+    WORDS.carCustom,
+    WORDS.transport,
+    WORDS.travelStay,
+    WORDS.event,
+    WORDS.food,
+    WORDS.dailyGoods,
+    WORDS.timeSavingService,
+    WORDS.beautyProduct,
+    WORDS.beautyService,
+    WORDS.healthDevice,
+    WORDS.healthApp,
+    WORDS.healthService,
+    WORDS.healthSubscription,
+    WORDS.medicalCare,
+    WORDS.insurance,
+    WORDS.gameEntertainment,
+    WORDS.gameMicrotransaction,
+    WORDS.sponsorship,
+    WORDS.creatorSupport,
+    WORDS.workTool,
+    WORDS.shoes,
+    WORDS.bag,
+    WORDS.fashionAccessory,
+    WORDS.fashionWear,
+    WORDS.gift,
+    WORDS.subscription,
+    WORDS.interior,
+    WORDS.homeDevice
+  ].flat();
+}
+
+const AMBIGUOUS_PRODUCT_WORDS = ["商品", "用品", "グッズ", "道具", "アイテム", "部品", "物", "買い物", "その他", "何か"];
+const AMBIGUOUS_SERVICE_WORDS = ["サービス", "作業", "サポート", "メニュー", "プラン", "依頼"];
+const KNOWN_PRODUCT_KEYWORDS = flattenKeywordGroups();
+
+function isGenericOnlyName(normalizedItemName, genericWords) {
+  const pattern = new RegExp(`^(?:高級|限定|一般|普通|簡易|中古|新品|業務用|家庭用|大型|小型|新しい|古い|安い|高い|上質な|特別な)?(?:${genericWords.join("|")})$`);
+  return pattern.test(normalizedItemName);
+}
+
+function isSpecificProductName(normalizedItemName) {
+  if (!normalizedItemName) {
+    return false;
+  }
+
+  if (AMBIGUOUS_PRODUCT_WORDS.includes(normalizedItemName) || isGenericOnlyName(normalizedItemName, AMBIGUOUS_PRODUCT_WORDS)) {
+    return false;
+  }
+
+  if (hasAny(normalizedItemName, WORDS.serviceWords)) {
+    return false;
+  }
+
+  if (hasAny(normalizedItemName, KNOWN_PRODUCT_KEYWORDS)) {
+    return true;
+  }
+
+  return /[a-z0-9ぁ-んァ-ヶ一-龠]/.test(normalizedItemName) && normalizedItemName.length >= 2;
+}
+
+function isSpecificServiceName(normalizedItemName) {
+  if (!normalizedItemName) {
+    return false;
+  }
+
+  if (AMBIGUOUS_SERVICE_WORDS.includes(normalizedItemName) || isGenericOnlyName(normalizedItemName, AMBIGUOUS_SERVICE_WORDS)) {
+    return false;
+  }
+
+  return hasAny(normalizedItemName, WORDS.serviceWords) || normalizedItemName.length >= 4;
+}
+
+function detectStationeryTrait(normalizedItemName) {
+  if (normalizedItemName.includes("鉛筆削り")) {
+    return "sharpener";
+  }
+
+  if (hasAny(normalizedItemName, ["鉛筆", "シャープペン", "シャープペンシル"])) {
+    return "pencil";
+  }
+
+  if (hasAny(normalizedItemName, ["ボールペン", "万年筆", "ペン", "筆記具"])) {
+    return "pen";
+  }
+
+  if (normalizedItemName.includes("消しゴム")) {
+    return "eraser";
+  }
+
+  if (hasAny(normalizedItemName, ["ノート", "手帳", "メモ帳", "付箋", "ファイル", "バインダー"])) {
+    return "paper";
+  }
+
+  if (normalizedItemName.includes("電卓")) {
+    return "calculator";
+  }
+
+  return "deskTool";
+}
+
+function detectKitchenTrait(normalizedItemName) {
+  if (hasAny(normalizedItemName, ["フライパン", "鍋", "包丁", "まな板", "調理器具"])) {
+    return "cookware";
+  }
+
+  if (hasAny(normalizedItemName, ["マグカップ", "コップ", "水筒"])) {
+    return "drinkware";
+  }
+
+  if (hasAny(normalizedItemName, ["皿", "茶碗", "箸", "スプーン", "フォーク", "食器"])) {
+    return "tableware";
+  }
+
+  return "container";
+}
+
+function detectFurnitureTrait(normalizedItemName) {
+  if (hasAny(normalizedItemName, ["椅子", "ソファ"])) {
+    return "seat";
+  }
+
+  if (hasAny(normalizedItemName, ["机", "テーブル"])) {
+    return "desk";
+  }
+
+  if (hasAny(normalizedItemName, ["本棚", "棚", "収納箱", "収納ケース", "タンス", "ゴミ箱", "カーテン"])) {
+    return "storage";
+  }
+
+  return "bedding";
+}
+
+function detectHouseholdTrait(normalizedItemName) {
+  if (normalizedItemName.includes("傘")) {
+    return "rain";
+  }
+
+  if (hasAny(normalizedItemName, ["タオル", "ハンカチ"])) {
+    return "fabric";
+  }
+
+  if (hasAny(normalizedItemName, ["財布", "キーホルダー"])) {
+    return "carry";
+  }
+
+  if (hasAny(normalizedItemName, ["充電器", "ケーブル", "延長コード", "電池"])) {
+    return "power";
+  }
+
+  if (hasAny(normalizedItemName, ["時計", "ライト", "懐中電灯", "体温計"])) {
+    return "smallDevice";
+  }
+
+  return "tool";
+}
+
+function detectGenericProductTrait(normalizedItemName) {
+  if (hasAny(normalizedItemName, ["セット", "まとめ", "箱", "ケース"])) {
+    return "bundle";
+  }
+
+  if (hasAny(normalizedItemName, ["器", "皿", "カップ", "鍋", "パン"])) {
+    return "houseware";
+  }
+
+  if (hasAny(normalizedItemName, ["コード", "充電", "電池", "アダプタ"])) {
+    return "electronicAccessory";
+  }
+
+  if (hasAny(normalizedItemName, ["服", "靴", "帽子", "財布", "鞄"])) {
+    return "wearable";
+  }
+
+  return "generic";
+}
+
+function detectItemTraits(normalizedItemName, categoryName) {
+  if (categoryName === "stationery") {
+    return { subtype: detectStationeryTrait(normalizedItemName) };
+  }
+
+  if (categoryName === "kitchenGoods") {
+    return { subtype: detectKitchenTrait(normalizedItemName) };
+  }
+
+  if (categoryName === "furniture") {
+    return { subtype: detectFurnitureTrait(normalizedItemName) };
+  }
+
+  if (categoryName === "generalHouseholdItem") {
+    return { subtype: detectHouseholdTrait(normalizedItemName) };
+  }
+
+  if (categoryName === "otherProduct") {
+    return { subtype: detectGenericProductTrait(normalizedItemName) };
+  }
+
+  return { subtype: "generic" };
+}
+
+function buildStationeryExcuse({ item, formattedAmount, priceLevel, itemTraits }, variant) {
+  const subtype = itemTraits.subtype;
+  const profiles = {
+    pencil: {
+      comparison: "一般的な一本の鉛筆",
+      scenarioA: "画材用のセットや長期分のまとめ買い",
+      scenarioB: "芯の硬さをそろえた専門用途や限定品",
+      scenarioC: "本数や用途をまとめて確保する買い方",
+      result: "必要な筆記具や消耗品を先に揃えた費用として整理できます"
+    },
+    pen: {
+      comparison: item.includes("万年筆") ? "一般的な事務用の筆記具" : "一般的な使い捨てペン",
+      scenarioA: item.includes("万年筆") ? "ペン先や調整、替インクまで含む筆記具" : "替芯で使い続ける筆記具や記念品クラス",
+      scenarioB: item.includes("万年筆") ? "長く使う前提の高級筆記具" : "書きやすさや耐久性を重視した高級筆記具",
+      scenarioC: "安価なペンを何度も買い直すより一本にまとめる考え方",
+      result: "単なるインク代ではなく使う道具全体への支払いとして説明できます"
+    },
+    eraser: {
+      comparison: "一般的な一個の消しゴム",
+      scenarioA: "業務用のまとめ買いや画材向けの消耗品",
+      scenarioB: "用途ごとに種類をそろえたセット",
+      scenarioC: "必要数をまとめて確保する買い方",
+      result: "単品価格ではなく、数量や用途を含めた消耗品費として見る必要があります"
+    },
+    paper: {
+      comparison: "一般的な一冊の文房具",
+      scenarioA: "冊数をまとめた購入や仕様をそろえたセット",
+      scenarioB: "用途別にサイズや紙質を分ける前提",
+      scenarioC: "必要な規格を一度で揃える買い方",
+      result: "単価ではなく、必要な冊数や仕様全体で比べる方が自然です"
+    },
+    calculator: {
+      comparison: "一般的な電卓一台",
+      scenarioA: "関数電卓や業務用の仕様を含む機種",
+      scenarioB: "使う場面に応じて精度や機能を選ぶ必要がある場合",
+      scenarioC: "必要な機能を満たす機種を最初から選ぶ買い方",
+      result: "通常品と同じ基準で比べず、機能条件に対する支払いとして説明できます"
+    },
+    sharpener: {
+      comparison: "一般的な鉛筆削り一台",
+      scenarioA: "替刃や削り角度まで含めて選ぶ仕様",
+      scenarioB: "複数本を続けて削る用途や耐久性を重視する場合",
+      scenarioC: "安価な物を買い直す回数を減らす考え方",
+      result: "単に鉛筆の付属品ではなく、作業性を支える道具として整理できます"
+    },
+    deskTool: {
+      comparison: "一般的な文房具ひとつ",
+      scenarioA: "精度や刃の品質、セット内容が違う場合",
+      scenarioB: "複数本セットや業務用の構成",
+      scenarioC: "使いにくい物を何度も買い直さないための選び方",
+      result: "単品価格だけでなく、仕様や構成全体で比べるべき支出です"
+    }
+  };
+  const profile = profiles[subtype] || profiles.deskTool;
+  const recognition = getPriceRecognition("stationery", priceLevel, profile.comparison);
+  const resultText = profile.result.endsWith("。") ? profile.result : `${profile.result}。`;
+
+  if (variant === 0) {
+    return `${item}に${formattedAmount}は、${recognition}。ただ、${profile.scenarioA}なら、一本や一個の通常品だけで比べるのは適切ではありません。用途と数量が金額に見合っているなら、${resultText}`;
+  }
+
+  if (variant === 1) {
+    return `${formattedAmount}の${item}は、${profile.comparison}だけで見れば重い金額です。ただ、${profile.scenarioB}なら、一般的な事務用品と同じ基準では比較できません。必要な構成全体への支払いと考えるなら、筋道は立てやすいです。`;
+  }
+
+  return `${item}に${formattedAmount}は高めです。とはいえ、${profile.scenarioC}なら、安い物を何度も選び直す場合との比較になります。単品の値札だけでなく、必要な本数や仕様まで含めて見合うなら説明できます。`;
+}
+
+function buildKitchenGoodsExcuse({ item, formattedAmount, priceLevel, itemTraits }, variant) {
+  const subtype = itemTraits.subtype;
+  const profiles = {
+    cookware: {
+      comparison: "一般的な調理器具ひとつ",
+      scenarioA: "耐久性や熱まわりまで含めて選ぶ調理器具",
+      scenarioB: "複数用途で回せて買い替え頻度を下げる前提",
+      scenarioC: "外食や使い捨て用品に寄る回数を減らす使い方"
+    },
+    drinkware: {
+      comparison: "一般的な一個の食器",
+      scenarioA: "保温性や素材、セット内容が違う場合",
+      scenarioB: "毎日使う前提で、複数個や仕様を揃える場合",
+      scenarioC: "安価な物を割ったり買い替えたりする回数を減らす考え方"
+    },
+    tableware: {
+      comparison: "一般的な一式の食器",
+      scenarioA: "枚数や材質、用途別の組み合わせが含まれる場合",
+      scenarioB: "毎回違う物を足さずに一度で揃える前提",
+      scenarioC: "使い捨てや追加購入を減らすための揃え方"
+    },
+    container: {
+      comparison: "一般的なキッチン用品",
+      scenarioA: "容量や仕様が用途に合わせて違う場合",
+      scenarioB: "日常で繰り返し使う前提で複数個を揃える場合",
+      scenarioC: "保存や持ち運びの手間を減らす使い方"
+    }
+  };
+  const profile = profiles[subtype] || profiles.container;
+  const recognition = getPriceRecognition("kitchenGoods", priceLevel, profile.comparison);
+
+  if (variant === 0) {
+    return `${item}に${formattedAmount}は、${recognition}。ただ、${profile.scenarioA}なら、単純な単品価格だけで比べるのは雑です。用途と耐久性が金額に見合っているなら、日常の道具を整えた費用として整理できます。`;
+  }
+
+  if (variant === 1) {
+    return `${formattedAmount}の${item}は、一般的な日用品として見れば強めです。ただ、${profile.scenarioB}なら、安い物を買い足していくより比較しやすい面があります。調理や片付けの手間が減る条件なら説明の筋は通ります。`;
+  }
+
+  return `${item}に${formattedAmount}を出したのは高めでも、${profile.scenarioC}なら、外食や使い捨ての積み重ねとの比較になります。単なる器具代ではなく、毎日の使い勝手をまとめて整える支出として見れば不自然ではありません。`;
+}
+
+function buildFurnitureExcuse({ item, formattedAmount, priceLevel, itemTraits }, variant) {
+  const subtype = itemTraits.subtype;
+  const profiles = {
+    seat: {
+      comparison: "一般的な椅子や座具",
+      scenarioA: "姿勢や座り心地まで含めて選ぶ家具",
+      scenarioB: "毎日使う前提で、安価な物を短い周期で替える場合",
+      scenarioC: "作業姿勢や居場所の安定を優先する選び方"
+    },
+    desk: {
+      comparison: "一般的な机やテーブル",
+      scenarioA: "作業面積や強度まで条件に入る家具",
+      scenarioB: "部屋の使い方に合わせて一度で条件を満たす前提",
+      scenarioC: "狭さや不安定さで作業効率を落とさないための選び方"
+    },
+    storage: {
+      comparison: "一般的な収納家具",
+      scenarioA: "収納量や寸法まで合わせる必要がある場合",
+      scenarioB: "安価な収納を足し続けるより一度で整理する前提",
+      scenarioC: "部屋の使える面積や探し物の手間を減らす考え方"
+    },
+    bedding: {
+      comparison: "一般的な寝具",
+      scenarioA: "素材や厚み、使う期間を考えて選ぶ場合",
+      scenarioB: "短い周期で買い替えるより長めに使う前提",
+      scenarioC: "睡眠環境や置き場所をまとめて整える考え方"
+    }
+  };
+  const profile = profiles[subtype] || profiles.storage;
+  const recognition = getPriceRecognition("furniture", priceLevel, profile.comparison);
+
+  if (variant === 0) {
+    return `${item}に${formattedAmount}は、${recognition}。ただ、${profile.scenarioA}なら、単純な最安値だけで比較するのは適切ではありません。条件を満たす物を一度で選べたなら、生活空間を整える費用として説明できます。`;
+  }
+
+  if (variant === 1) {
+    return `${formattedAmount}の${item}は一度の出費としては軽くありません。ただ、${profile.scenarioB}なら、安価な物をいくつも試すより比較しやすいです。買い替え頻度や使える面積まで含めるなら、金額の見え方は変わります。`;
+  }
+
+  return `${item}に${formattedAmount}を出したのは、物を置くだけの話ではありません。${profile.scenarioC}なら、部屋の整理や作業効率との比較になります。日常で触れる時間が長い物ほど、条件を先に揃える支出として筋が通ります。`;
+}
+
+function buildGeneralHouseholdExcuse({ item, formattedAmount, priceLevel, itemTraits }, variant) {
+  const subtype = itemTraits.subtype;
+  const profiles = {
+    rain: {
+      comparison: "一般的な一本の傘",
+      scenarioA: "耐久性や携帯性、素材が違う場合",
+      scenarioB: "壊れて買い直す回数を減らす前提",
+      scenarioC: "濡れて予定が崩れる場面を減らす考え方"
+    },
+    fabric: {
+      comparison: "一般的な生活用品",
+      scenarioA: "枚数や素材、用途別の使い分けが含まれる場合",
+      scenarioB: "まとめ買いや仕様を揃える前提",
+      scenarioC: "安い物を短い周期で替える回数を減らす考え方"
+    },
+    carry: {
+      comparison: "一般的な小物",
+      scenarioA: "素材や作り、長く使う前提が違う場合",
+      scenarioB: "毎日持つ物として条件を満たす前提",
+      scenarioC: "安価な物を買い直し続けないための選び方"
+    },
+    power: {
+      comparison: "一般的な電子小物",
+      scenarioA: "本数や規格、出力条件まで含まれる場合",
+      scenarioB: "必要な機器ぶんをまとめて揃える前提",
+      scenarioC: "足りないたびに買い足す手間を減らす考え方"
+    },
+    smallDevice: {
+      comparison: "一般的な小型生活用品",
+      scenarioA: "精度や明るさ、機能差がある場合",
+      scenarioB: "必要な性能を最初から満たす前提",
+      scenarioC: "使えない場面を減らすための備え方"
+    },
+    tool: {
+      comparison: "一般的な生活用の道具",
+      scenarioA: "耐久性や使いやすさ、仕様が違う場合",
+      scenarioB: "必要な場面で困らないよう先に揃える前提",
+      scenarioC: "その都度代用品で済ませる手間を減らす考え方"
+    }
+  };
+  const profile = profiles[subtype] || profiles.tool;
+  const recognition = getPriceRecognition("generalHouseholdItem", priceLevel, profile.comparison);
+
+  if (variant === 0) {
+    return `${item}に${formattedAmount}は、${recognition}。ただ、${profile.scenarioA}なら、単純な単品価格だけで比べるのは早いです。用途と仕様が金額に見合っているなら、日常の不便を減らすための支出として整理できます。`;
+  }
+
+  if (variant === 1) {
+    return `${formattedAmount}の${item}は、一般的な生活用品としては強めに見えます。ただ、${profile.scenarioB}なら、安い物を何度も選ぶ場合との比較になります。条件を満たす物を先に確保した費用としてなら説明しやすいです。`;
+  }
+
+  return `${item}に${formattedAmount}を出したのは高めでも、${profile.scenarioC}なら、買い直しや手間の積み重ねとの比較になります。単なる小物代ではなく、生活の細かい不便を先に潰した支出として見る余地があります。`;
+}
+
+function buildGenericProductExcuse({ item, formattedAmount, priceLevel, itemTraits }, variant) {
+  const subtype = itemTraits.subtype;
+  const profiles = {
+    bundle: {
+      comparison: "一般的な単品価格",
+      scenarioA: "単品ではなくセットやまとめ買い",
+      scenarioB: "数量や構成が通常品と違う場合",
+      scenarioC: "必要な条件を一度で揃える買い方"
+    },
+    houseware: {
+      comparison: "一般的な生活用品",
+      scenarioA: "素材や耐久性、用途の幅が違う場合",
+      scenarioB: "安価な物の買い直しを減らす前提",
+      scenarioC: "日常の使い勝手をまとめて整える選び方"
+    },
+    electronicAccessory: {
+      comparison: "一般的な周辺小物",
+      scenarioA: "規格や出力、互換性まで条件に入る場合",
+      scenarioB: "必要な本数や仕様をまとめて揃える前提",
+      scenarioC: "足りないたびに追加する手間を減らす考え方"
+    },
+    wearable: {
+      comparison: "一般的な身の回り品",
+      scenarioA: "素材や作り、使う場面が違う場合",
+      scenarioB: "条件に合う物を最初から選ぶ前提",
+      scenarioC: "安い物を買い直して迷う回数を減らす選び方"
+    },
+    generic: {
+      comparison: "一般的な単品価格",
+      scenarioA: "単品なのかセットなのか、日常用なのか専門用途なのかで比較基準が変わる場合",
+      scenarioB: "用途や品質で通常品と比べ方が変わる場合",
+      scenarioC: "安い物を何度も選び直さず、条件を一度で満たす選び方"
+    }
+  };
+  const profile = profiles[subtype] || profiles.generic;
+  const recognition = getPriceRecognition("otherProduct", priceLevel, profile.comparison);
+
+  if (variant === 0) {
+    return `${item}に${formattedAmount}は、${recognition}。ただ、${profile.scenarioA}なら、一般的な単品と同じ基準で比べるのは適切ではありません。用途と品質が金額に見合っているなら、一度で条件を満たす物を選んだ費用として説明できます。`;
+  }
+
+  if (variant === 1) {
+    return `${formattedAmount}の${item}は高く見えても、${profile.scenarioB}なら、通常品との単純比較では足りません。数量、仕様、品質まで含めて見合うなら、買い直しを減らす支出として整理できます。`;
+  }
+
+  return `${item}に${formattedAmount}を出したのは、物の名前だけで見ると強めでも、${profile.scenarioC}なら比較の軸は変わります。単なる勢いではなく、必要な条件を先に揃えた支払いとしてなら筋は通ります。`;
+}
+
+function buildGenericServiceExcuse({ item, formattedAmount }, variant) {
+  if (variant === 0) {
+    return `${item}に${formattedAmount}は安い話ではありません。ただ、サービスは物が残らないぶん、何を任せてどの手間を減らしたかで比較の軸が変わります。内容が具体的で、別の手段より時間や負担を減らせたなら、用途を限定した支出として説明できます。`;
+  }
+
+  if (variant === 1) {
+    return `${formattedAmount}の${item}は金額だけ見ると判断しづらいですが、比較すべきなのは物の有無ではなく、手間と時間です。自分で抱える場合との違いがはっきりしているなら、単なるぜいたくではなく作業の置き換えとして整理できます。`;
+  }
+
+  return `${item}に${formattedAmount}を払ったのは、目に見える品物を買うためではなく、何かの手間を外に出すためです。内容が具体的で、別のやり方より負担を減らせるなら、その差額には十分説明の余地があります。`;
 }
 
 function pickRandom(array) {
@@ -990,6 +1637,22 @@ function detectItemType(normalizedItemName, repairContext, specificException) {
     return { categoryName: "homeDevice" };
   }
 
+  if (hasAny(normalizedItemName, WORDS.stationery)) {
+    return { categoryName: "stationery" };
+  }
+
+  if (hasAny(normalizedItemName, WORDS.kitchenGoods)) {
+    return { categoryName: "kitchenGoods" };
+  }
+
+  if (hasAny(normalizedItemName, WORDS.furniture)) {
+    return { categoryName: "furniture" };
+  }
+
+  if (hasAny(normalizedItemName, WORDS.generalHouseholdItem)) {
+    return { categoryName: "generalHouseholdItem" };
+  }
+
   if (hasAny(normalizedItemName, WORDS.serviceWords) || hasAny(normalizedItemName, WORDS.recurringWords)) {
     return { categoryName: "otherService" };
   }
@@ -1016,6 +1679,8 @@ function buildTemplateData(itemName, amount, context) {
     perUse100: calculatePerUse(amount, 100),
     perDay1Year: calculatePerDay(amount, 365),
     perDay3Years: calculatePerDay(amount, 365 * 3),
+    priceLevel: context.priceLevel,
+    itemTraits: context.itemTraits,
     periodLabel,
     unitCost
   };
@@ -1072,7 +1737,7 @@ function scoreCandidate(context, text) {
     score -= 1;
   }
 
-  if ((context.categoryName === "otherProduct" || context.categoryName === "otherService") && !/用途|比較|材料|曖昧/.test(text)) {
+  if ((context.categoryName === "otherProduct" || context.categoryName === "otherService") && !/用途|比較|条件|品質|仕様|内容|手間/.test(text)) {
     score -= 3;
   }
 
@@ -1081,7 +1746,7 @@ function scoreCandidate(context, text) {
 
 function minimumScore(categoryName) {
   if (["otherProduct", "otherService"].includes(categoryName)) {
-    return 7;
+    return 5;
   }
 
   if (["gift", "subscription", "interior"].includes(categoryName)) {
@@ -1205,12 +1870,21 @@ function generateExcuseText(itemName, normalizedItemName, amount) {
     };
   }
 
-  if (["otherProduct", "otherService"].includes(categoryName)) {
+  if (categoryName === "otherProduct" && !isSpecificProductName(normalizedItemName)) {
     return {
       ok: false,
       message: meta.suggestion
     };
   }
+
+  if (categoryName === "otherService" && !isSpecificServiceName(normalizedItemName)) {
+    return {
+      ok: false,
+      message: meta.suggestion
+    };
+  }
+
+  const itemTraits = detectItemTraits(normalizedItemName, categoryName);
 
   const context = {
     itemName,
@@ -1218,6 +1892,8 @@ function generateExcuseText(itemName, normalizedItemName, amount) {
     amount,
     formattedAmount: formatCurrency(amount),
     categoryName,
+    priceLevel: detectPriceLevel(amount, categoryName),
+    itemTraits,
     specificException,
     actionType,
     repairContext,
@@ -1328,6 +2004,10 @@ window.__shoppingExcuseDebug = {
   detectSpecificExceptions,
   detectItemType,
   detectCategory,
+  detectPriceLevel,
+  isSpecificProductName,
+  isSpecificServiceName,
+  detectItemTraits,
   detectRepairContext,
   detectActionType,
   detectBillingPeriod,
