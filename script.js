@@ -13,12 +13,16 @@ const generationErrorText = document.getElementById("generation-error-text");
 
 let lastExcuse = "";
 let copyTimerId = null;
+const APP_VERSION = "2026.07.15-logic-2";
+
+console.info(`Shopping Excuse Tool ${APP_VERSION}`);
 
 const recentExcusesByKey = new Map();
 
 const CATEGORY_LABELS = {
   carMaintenance: "車・バイク整備",
   carCustom: "車・バイクカスタム",
+  vehiclePurchase: "自動車購入",
   transport: "移動",
   premiumTransit: "快適な移動",
   travelStay: "旅行・宿泊",
@@ -44,6 +48,7 @@ const CATEGORY_LABELS = {
   dailyGoods: "日用品",
   timeSavingService: "時短サービス",
   sponsorship: "スポンサー・応援",
+  creatorSupport: "配信者支援",
   gift: "プレゼント",
   subscription: "サブスク",
   fashionRepair: "服飾品の修理",
@@ -59,6 +64,18 @@ const AMBIGUOUS_INPUTS = {
   バッグ: "",
   サービス: "「家事代行サービス」のように、何を任せたか分かる名前で入力してください。"
 };
+
+const BANNED_EMPTY_JUSTIFICATIONS = [
+  "理屈を盛りすぎなくても",
+  "納得して選んだなら",
+  "それを欲しいと思った",
+  "自分の判断を優先した",
+  "生活に支障が出ない範囲なら",
+  "完璧な理屈は要りません",
+  "自分で納得しているなら",
+  "それで十分です",
+  "応援にお金を使った形です"
+];
 
 const WORDS = {
   repair: ["修理", "交換修理", "オーバーホール", "補修", "メンテナンス", "整備", "修繕", "調整"],
@@ -79,6 +96,13 @@ const WORDS = {
   excludedVehicle: ["自転車", "電車", "台車", "車椅子", "ベビーカー", "自動車学校", "駐車場", "洗車", "列車"],
   vehicle: [
     "自動車",
+    "中古車",
+    "軽自動車",
+    "乗用車",
+    "車両購入",
+    "中古の自動車",
+    "中古の車",
+    "セカンドカー",
     "車検",
     "車高調",
     "マフラー",
@@ -94,6 +118,7 @@ const WORDS = {
     "ラジエーター"
   ],
   carCustom: ["車高調", "マフラー", "ホイール", "エアロ", "スポイラー", "サスペンション", "ダウンサス"],
+  vehiclePurchase: ["自動車", "中古車", "軽自動車", "乗用車", "車両購入", "中古の自動車", "中古の車", "セカンドカー"],
   vehicleMaintenance: ["車検", "エンジンオイル", "ブレーキ", "タイヤ交換", "オイル交換", "オーバーホール", "整備"],
   homeDevice: [
     "airpods",
@@ -154,6 +179,7 @@ const WORDS = {
   gameEntertainment: ["pcゲーム", "switchソフト", "ps5ゲーム", "ゲームソフト", "steam", "xbox", "漫画", "フィギュア"],
   gameMicrotransaction: ["スマホゲーム課金", "ゲーム課金", "ガチャ課金", "課金", "シーズンパス", "バトルパス"],
   sponsorship: ["スポンサー枠", "スポンサー", "協賛", "支援", "fanbox", "patreon"],
+  creatorSupport: ["スパチャ", "スーパーチャット", "super chat", "投げ銭", "配信への投げ銭", "youtube投げ銭", "配信者支援"],
   workTool: ["snap-on", "ラチェット", "工具", "ノートpc", "仕事用", "業務用", "airpods pro", "airpods", "ドライヤー業務用"],
   shoes: ["スニーカー", "靴", "ブーツ", "ローファー", "パンプス", "サンダル"],
   bag: ["バッグ", "鞄", "カバン", "リュック", "トート"],
@@ -167,6 +193,7 @@ const WORDS = {
 const CATEGORY_META = {
   carMaintenance: { suggestion: "「車検」「ブレーキ修理」のように内容が分かる名前で入力してください。" },
   carCustom: { suggestion: "「車高調」「マフラー」のように部品名が分かる名前で入力してください。" },
+  vehiclePurchase: { suggestion: "「自動車」「中古車」のように車両購入だと分かる名前で入力してください。" },
   transport: { suggestion: "「タクシー」「駐車場代」のように移動内容が分かる名前で入力してください。" },
   premiumTransit: { suggestion: "「新幹線グリーン車」のように移動内容が分かる名前で入力してください。" },
   travelStay: { suggestion: "「ホテル宿泊」「旅館」のように内容が分かる名前で入力してください。" },
@@ -192,6 +219,7 @@ const CATEGORY_META = {
   dailyGoods: { suggestion: "「シャンプー」のように日用品名が分かる名前で入力してください。" },
   timeSavingService: { suggestion: "「家事代行」のように内容が分かる名前で入力してください。" },
   sponsorship: { suggestion: "「スポンサー枠」のように支援内容が分かる名前で入力してください。" },
+  creatorSupport: { suggestion: "「スパチャ」「投げ銭」のように支援内容が分かる名前で入力してください。" },
   gift: { suggestion: "「プレゼント」のように内容が分かる名前で入力してください。" },
   subscription: { suggestion: "「年会費」「Netflix」のように内容が分かる名前で入力してください。" },
   fashionRepair: { suggestion: "「靴修理」のように修理対象が分かる名前で入力してください。" },
@@ -220,6 +248,16 @@ const CATEGORY_DEFINITIONS = {
         `${formattedAmount}の${item}は趣味の出費に見えますが、実際は見た目と乗り味をまとめて調整する費用です。純正のまま我慢して別の部品を足していくより、一回で狙いを決めた方が再作業や買い直しを減らせます。`,
       ({ item, formattedAmount }) =>
         `${item}に${formattedAmount}を払ったのは、必要最低限を超えた調整だからこそ金額が乗っています。ただ、目的に合わない部品を何度も試すより、最初から条件に合う物へまとめて払う方が結果は素直です。`
+    ]
+  },
+  vehiclePurchase: {
+    templates: [
+      ({ item, formattedAmount }) =>
+        `${item}に${formattedAmount}は、購入価格だけを見るとむしろ低く見えることがあります。ただ、判断材料は本体価格ではなく、車検や修理費まで含めた総額です。日常の移動に使えてタクシーやレンタカーを減らせる状態なら、移動手段を確保する初期費用として説明できます。`,
+      ({ item, formattedAmount }) =>
+        `${formattedAmount}の${item}は、安いから得だと決められる金額ではありません。ただ、維持費と修理費を確認したうえで使えるなら、同額を一時的な移動サービスに払うより、手元に移動手段が残る点で合理性があります。`,
+      ({ item, perDay3Years, formattedAmount }) =>
+        `${formattedAmount}の${item}は一度の支払いとしては判断しづらいですが、3年間使う前提なら1日あたり${perDay3Years}です。通勤や荷物運搬など複数用途に回せて、最後に売却できる余地まであるなら、使用期間で費用を分散する考え方は十分成り立ちます。`
     ]
   },
   transport: {
@@ -476,6 +514,16 @@ const CATEGORY_DEFINITIONS = {
         `${item}に${formattedAmount}を払ったのは、気持ちだけではなく接点を作るためです。活動の継続に関わりつつ、広報や関係づくりの経験まで乗るなら、単なる持ち出しではありません。`
     ]
   },
+  creatorSupport: {
+    templates: [
+      ({ item, formattedAmount }) =>
+        `${item}に${formattedAmount}は、一般的な娯楽費としては大きい金額です。ただ、商品代ではなく、配信活動への支援とメッセージを届ける機能に払った費用です。応援予算の範囲で、細かな投げ銭を重ねる代わりに一度で支援したなら、用途を限定した支出として整理できます。`,
+      ({ item, formattedAmount }) =>
+        `${formattedAmount}の${item}は物として残りません。ただ、配信を見るだけではなく、活動費へ直接回る支援として払ったなら、単なる衝動買いとは切り分けられます。スポンサー費や他の娯楽費と比べて年間予算の中に収まるなら、説明の筋は通ります。`,
+      ({ item, formattedAmount }) =>
+        `${item}に${formattedAmount}を出したのは、物を受け取るためではなく、配信への支援をまとめて示すためです。少額を何度も送るより応援予算を最初に区切って管理する形なら、メッセージ付きの支出として整理しやすいです。`
+    ]
+  },
   gift: {
     templates: [
       ({ item, formattedAmount }) =>
@@ -585,6 +633,7 @@ const VALIDATION_RULES = [
 const CATEGORY_REASON_PATTERNS = {
   carMaintenance: [/故障/, /整備/, /走れ/, /移動手段/, /追加整備/],
   carCustom: [/乗り味/, /純正/, /再作業/, /車高/, /部品/],
+  vehiclePurchase: [/維持費/, /修理費/, /総額/, /タクシー/, /レンタカー/, /複数用途/, /売却/, /使用期間/],
   transport: [/乗り換え/, /待ち時間/, /遅刻/, /段取り/, /徒歩/],
   premiumTransit: [/体力/, /コンディション/, /普通席/, /到着後/, /休憩/],
   travelStay: [/滞在時間/, /日帰り/, /日程/, /宿代/, /移動代/],
@@ -610,6 +659,7 @@ const CATEGORY_REASON_PATTERNS = {
   dailyGoods: [/毎日/, /消耗品/, /買い直し/, /失敗/, /手間/],
   timeSavingService: [/時間/, /面倒/, /作業/, /優先順位/, /予定/],
   sponsorship: [/広告/, /協賛/, /接点/, /広報/, /支援/],
+  creatorSupport: [/配信/, /支援/, /応援予算/, /娯楽費/, /メッセージ/, /活動費/, /スポンサー費/, /年間予算/],
   gift: [/相手/, /選び直し/, /関係/, /無難/, /贈り物/],
   subscription: [/定額/, /都度/, /継続/, /単発/, /管理/],
   fashionRepair: [/修理/, /買い替え/, /寿命/, /使い続け/, /傷み/],
@@ -832,6 +882,10 @@ function detectItemType(normalizedItemName, repairContext, specificException) {
     return { categoryName: "medicalCare" };
   }
 
+  if (hasAny(normalizedItemName, WORDS.creatorSupport)) {
+    return { categoryName: "creatorSupport" };
+  }
+
   if (hasAny(normalizedItemName, WORDS.sponsorship)) {
     return { categoryName: "sponsorship" };
   }
@@ -846,6 +900,10 @@ function detectItemType(normalizedItemName, repairContext, specificException) {
 
   if (hasAny(normalizedItemName, WORDS.carCustom)) {
     return { categoryName: "carCustom" };
+  }
+
+  if (hasAny(normalizedItemName, WORDS.vehiclePurchase)) {
+    return { categoryName: "vehiclePurchase" };
   }
 
   if (hasAny(normalizedItemName, WORDS.transport)) {
@@ -969,7 +1027,10 @@ function getCompatibleTemplates(categoryName) {
 }
 
 function validateGeneratedText(context, text) {
-  return VALIDATION_RULES.every((rule) => !rule.test(context, text));
+  return (
+    VALIDATION_RULES.every((rule) => !rule.test(context, text)) &&
+    !BANNED_EMPTY_JUSTIFICATIONS.some((phrase) => text.includes(phrase))
+  );
 }
 
 function scoreCandidate(context, text) {
@@ -1001,6 +1062,10 @@ function scoreCandidate(context, text) {
 
   if (NEGATIVE_GENERIC.test(text)) {
     score -= 4;
+  }
+
+  if (BANNED_EMPTY_JUSTIFICATIONS.some((phrase) => text.includes(phrase))) {
+    score -= 8;
   }
 
   if (NEGATIVE_WEAK.test(text)) {
