@@ -20,14 +20,23 @@ const CATEGORY_LABELS = {
   carMaintenance: "車の整備・修理",
   carCustom: "車のカスタムパーツ",
   transport: "交通・移動",
+  premiumTransit: "交通・移動",
   travelStay: "旅行・宿泊",
   food: "食事",
   shoes: "靴",
-  fashion: "ファッション",
+  fashionWear: "ファッション",
+  bag: "ファッション",
+  fashionAccessory: "ファッション",
   beautyProduct: "美容用品",
   beautyService: "美容サービス",
-  healthFitness: "健康・運動",
+  healthDevice: "健康用品・機器",
+  healthApp: "健康用品・機器",
+  healthService: "健康・美容サービス",
+  healthSubscription: "健康・運動",
+  medicalCare: "医療・身体のメンテナンス",
+  insurance: "保険・備え",
   homeDevice: "家電・デジタル機器",
+  homeRepair: "家電・デジタル機器の修理",
   workTool: "仕事道具",
   gameEntertainment: "ゲーム・娯楽",
   event: "映画・ライブ・イベント",
@@ -36,6 +45,8 @@ const CATEGORY_LABELS = {
   sponsorship: "スポンサー・応援・寄付",
   gift: "プレゼント",
   subscription: "サブスクリプション",
+  fashionRepair: "ファッション用品の修理",
+  genericRepair: "その他の修理",
   otherProduct: "その他の商品",
   otherService: "その他のサービス"
 };
@@ -49,604 +60,470 @@ const AMBIGUOUS_INPUTS = {
   "用品": "何に使う用品か分かるように、もう少し具体的に入力してください。"
 };
 
-const CATEGORY_RULES = [
-  {
-    name: "sponsorship",
-    nature: "support",
-    match: (text) => hasAny(text, ["スポンサー枠", "スポンサー", "支援", "投げ銭", "スパチャ", "fanbox", "patreon", "寄付"])
-  },
-  {
-    name: "adultService",
-    nature: "singleService",
-    disabled: true,
-    match: (text) => hasAny(text, ["風俗", "デリヘル", "ピンサロ", "ホテヘル", "ソープランド", "性感ヘルス"])
-  },
-  {
-    name: "premiumTransit",
-    aliasOf: "transport",
-    nature: "transport",
-    match: (text) => hasAny(text, ["グリーン車", "プレミアムシート", "ファーストクラス", "ビジネスクラス"])
-  },
-  {
-    name: "carCustom",
-    nature: "custom",
-    match: (text) => hasAny(text, ["車高調", "マフラー", "ホイール", "エアロ", "スポイラー", "サスペンション"])
-  },
-  {
-    name: "carMaintenance",
-    nature: "maintenance",
-    match: (text) =>
-      hasAny(text, [
-        "車検",
-        "エンジンオイル交換",
-        "エンジンオイル",
-        "ミッションオイル",
-        "オイル交換",
-        "タイヤ交換",
-        "修理",
-        "整備",
-        "点検",
-        "バッテリー交換",
-        "ブレーキパッド",
-        "ドラレコ"
-      ])
-  },
-  {
-    name: "dailyGoods",
-    nature: "consumable",
-    match: (text) => hasAny(text, ["ハンドソープ", "ボディソープ", "洗剤", "ティッシュ", "トイレットペーパー", "スポンジ"])
-  },
-  {
-    name: "beautyProduct",
-    nature: "consumable",
-    match: (text) =>
-      hasAny(text, ["ヘアオイル", "美容液", "化粧水", "乳液", "コスメ", "日焼け止め", "スキンケア", "香水", "ヘアミルク"])
-  },
-  {
-    name: "beautyService",
-    nature: "singleService",
-    match: (text) => hasAny(text, ["美容院", "ヘアサロン", "散髪", "カット", "カラー", "ネイル", "まつげ", "脱毛"])
-  },
-  {
-    name: "healthFitness",
-    nature: "serviceOrRecurring",
-    match: (text) =>
-      hasAny(text, [
-        "整体",
-        "マッサージ",
-        "もみほぐし",
-        "ジム",
-        "ジムメンバーシップ",
-        "パーソナルジム",
-        "サウナ",
-        "ヘルスケア",
-        "ヘルスメーター",
-        "服薬管理",
-        "健康管理"
-      ])
-  },
-  {
-    name: "gameEntertainment",
-    nature: "entertainment",
-    match: (text) =>
-      hasAny(text, [
-        "pcゲーム",
-        "スマホゲーム",
-        "ゲーム課金",
-        "課金",
-        "steam",
-        "switch",
-        "playstation",
-        "xbox",
-        "ゲーム",
-        "漫画",
-        "フィギュア",
-        "アニメ",
-        "プラモ",
-        "小説"
-      ])
-  },
-  {
-    name: "event",
-    nature: "experience",
-    match: (text) =>
-      hasAny(text, ["映画チケット", "ライブチケット", "映画館", "美術館", "展覧会", "入場料", "観劇", "フェス", "コンサート", "舞台"])
-  },
-  {
-    name: "travelStay",
-    nature: "experience",
-    match: (text) => hasAny(text, ["旅行", "ホテル宿泊", "ホテル", "旅館", "宿泊", "温泉宿", "航空券", "ツアー"])
-  },
-  {
-    name: "transport",
-    nature: "transport",
-    match: (text) => hasAny(text, ["タクシー", "駐車場代", "駐車料金", "駐車場", "ガソリン", "高速代", "交通費", "電車代", "バス代", "新幹線"])
-  },
-  {
-    name: "timeSavingService",
-    nature: "singleService",
-    match: (text) => hasAny(text, ["家事代行", "清掃代行", "洗濯代行", "宿題代行", "代行サービス"])
-  },
-  {
-    name: "workTool",
-    nature: "durable",
-    match: (text) => hasAny(text, ["仕事用ノートpc", "仕事用pc", "仕事用スマホ", "仕事用iphone", "業務用パソコン", "工具", "作業用工具"])
-  },
-  {
-    name: "homeDevice",
-    nature: "durable",
-    match: (text) =>
-      hasAny(text, [
-        "airpods",
-        "airpods pro",
-        "イヤホン",
-        "ヘッドホン",
-        "iphone",
-        "ipad",
-        "スマホ",
-        "パソコン",
-        "ノートpc",
-        "macbook",
-        "タブレット",
-        "洗濯機",
-        "冷蔵庫",
-        "掃除機",
-        "電子レンジ",
-        "エアコン",
-        "モニター",
-        "ディスプレイ"
-      ])
-  },
-  {
-    name: "shoes",
-    nature: "durable",
-    match: (text) => hasAny(text, ["スニーカー", "靴", "ブーツ", "ローファー", "パンプス", "サンダル"])
-  },
-  {
-    name: "fashion",
-    nature: "durable",
-    match: (text) => hasAny(text, ["コート", "シャツ", "デニム", "パンツ", "ジャケット", "帽子", "洋服", "バッグ"])
-  },
-  {
-    name: "gift",
-    nature: "genericProduct",
-    match: (text) => hasAny(text, ["プレゼント", "ギフト", "贈り物"])
-  },
-  {
-    name: "subscription",
-    nature: "recurringService",
-    match: (text) => hasAny(text, ["サブスク", "月額", "定期便", "netflix", "spotify", "youtube premium"])
-  },
-  {
-    name: "food",
-    nature: "food",
-    match: (text) =>
-      hasAny(text, ["海鮮丼", "焼肉", "寿司", "ラーメン", "カフェ", "ランチ", "ディナー", "ごはん", "弁当", "丼", "定食", "うなぎ", "食事"])
-  },
-  {
-    name: "otherService",
-    nature: "singleService",
-    match: (text) => hasAny(text, ["サービス", "レッスン", "相談", "代行"])
-  }
-];
+const WORDS = {
+  repair: ["修理", "整備", "点検", "交換", "オーバーホール", "oh", "メンテナンス", "調整", "補修", "リペア", "再塗装"],
+  vehicle: [
+    "車",
+    "自動車",
+    "バイク",
+    "オートバイ",
+    "エンジン",
+    "ミッション",
+    "タイヤ",
+    "ブレーキ",
+    "クラッチ",
+    "タービン",
+    "サスペンション",
+    "車高調",
+    "マフラー",
+    "ホイール",
+    "ラジエーター",
+    "オルタネーター",
+    "スターター",
+    "デフ",
+    "lsd",
+    "ドライブシャフト",
+    "ハブ",
+    "車検",
+    "ドラレコ"
+  ],
+  carCustom: ["車高調", "マフラー", "ホイール", "エアロ", "スポイラー", "サスペンション", "タービン"],
+  homeDevice: [
+    "洗濯機",
+    "スマホ",
+    "iphone",
+    "ipad",
+    "pc",
+    "パソコン",
+    "ノートpc",
+    "macbook",
+    "airpods",
+    "イヤホン",
+    "ヘッドホン",
+    "エアコン",
+    "冷蔵庫",
+    "掃除機",
+    "電子レンジ",
+    "モニター",
+    "ディスプレイ",
+    "タブレット"
+  ],
+  fashionRepair: ["靴", "スニーカー", "ブーツ", "バッグ", "かばん", "鞄", "コート", "帽子", "腕時計", "時計", "服"],
+  serviceWords: ["サービス", "代行", "レッスン", "相談", "施術", "診察", "検査"],
+  recurringWords: ["月額", "月会費", "月謝", "メンバーシップ", "会費", "サブスク", "定期便", "オンラインフィットネス"],
+  premiumTransit: ["グリーン車", "プレミアムシート", "ファーストクラス", "ビジネスクラス"],
+  transport: ["タクシー", "駐車場代", "駐車料金", "駐車場", "ガソリン", "高速代", "交通費", "電車代", "バス代", "新幹線"],
+  travelStay: ["旅行", "ホテル宿泊", "ホテル", "旅館", "宿泊", "温泉宿", "航空券", "ツアー"],
+  event: ["映画チケット", "ライブチケット", "映画館", "美術館", "展覧会", "入場料", "観劇", "フェス", "コンサート", "舞台"],
+  food: ["海鮮丼", "焼肉", "寿司", "ラーメン", "カフェ", "ランチ", "ディナー", "ごはん", "弁当", "丼", "定食", "うなぎ", "食事"],
+  dailyGoods: ["ハンドソープ", "ボディソープ", "洗剤", "ティッシュ", "トイレットペーパー", "スポンジ"],
+  timeSavingService: ["家事代行", "清掃代行", "洗濯代行", "宿題代行", "代行サービス"],
+  beautyProduct: ["ヘアオイル", "美容液", "化粧水", "乳液", "コスメ", "日焼け止め", "スキンケア", "香水", "ヘアミルク"],
+  beautyService: ["美容院", "ヘアサロン", "散髪", "カット", "カラー", "ネイル", "まつげ", "脱毛"],
+  healthDevice: ["マッサージチェア", "体重計", "ヘルスメーター", "血圧計", "トレーニング器具", "ダンベル", "ヨガマット"],
+  healthApp: ["ヘルスケアアプリ", "服薬管理アプリ", "ヘルスケア", "服薬管理", "健康管理アプリ"],
+  healthService: ["整体", "マッサージ", "もみほぐし", "オイルマッサージ", "鍼灸"],
+  healthSubscription: ["ジム月会費", "ジムメンバーシップ", "ジム", "パーソナルジム", "オンラインフィットネス", "ヨガ教室", "パーソナルトレーニング"],
+  vehicleMaintenance: ["車検", "エンジンオイル交換", "エンジンオイル", "ミッションオイル", "オイル交換", "タイヤ交換", "ブレーキ点検"],
+  medicalCare: ["医療費", "病院代", "診察代", "健康診断", "人間ドック", "歯医者", "歯科", "治療費", "薬代", "病院", "診察", "検査", "薬"],
+  insurance: ["自動車保険", "医療保険", "火災保険", "生命保険", "損害保険", "任意保険", "保険料"],
+  gameEntertainment: ["pcゲーム", "スマホゲーム", "ゲーム課金", "課金", "steam", "switch", "playstation", "xbox", "ゲーム", "漫画", "フィギュア", "アニメ", "プラモ", "小説"],
+  sponsorship: ["スポンサー枠", "スポンサー", "支援", "投げ銭", "スパチャ", "fanbox", "patreon", "寄付"],
+  workTool: ["仕事用ノートpc", "仕事用pc", "仕事用スマホ", "仕事用iphone", "業務用パソコン", "工具", "作業用工具"],
+  shoes: ["スニーカー", "靴", "ブーツ", "ローファー", "パンプス", "サンダル"],
+  bag: ["バッグ", "かばん", "鞄", "リュック", "トート", "ショルダー"],
+  fashionAccessory: ["帽子", "腕時計", "時計", "アクセサリー", "ネックレス", "リング", "ピアス"],
+  fashionWear: ["コート", "シャツ", "デニム", "パンツ", "ジャケット", "洋服", "服"],
+  gift: ["プレゼント", "ギフト", "贈り物"],
+  subscription: ["netflix", "spotify", "youtube premium"]
+};
+
+const CATEGORY_META = {
+  carMaintenance: { kind: "product", serviceMode: "repair", repairDomain: "vehicle", suggestion: "整備内容が分かるように「車検」や「エンジン修理」のように入力してください。" },
+  carCustom: { kind: "product", serviceMode: "purchase", suggestion: "カスタム内容が分かるように「車高調」や「マフラー」のように入力してください。" },
+  transport: { kind: "service", serviceMode: "single", suggestion: "交通手段が分かるように「タクシー代」や「駐車場代」のように入力してください。" },
+  premiumTransit: { kind: "service", serviceMode: "single", suggestion: "移動内容が分かるように「新幹線グリーン車」のように入力してください。" },
+  travelStay: { kind: "service", serviceMode: "single", suggestion: "旅行内容が分かるように「ホテル宿泊」や「旅館」のように入力してください。" },
+  food: { kind: "service", serviceMode: "single", suggestion: "食事内容が分かるように「海鮮丼」や「焼肉」のように入力してください。" },
+  shoes: { kind: "product", serviceMode: "durable", suggestion: "靴の種類が分かるように「スニーカー」など具体的に入力してください。" },
+  fashionWear: { kind: "product", serviceMode: "durable", suggestion: "服の種類が分かるように「コート」など具体的に入力してください." },
+  bag: { kind: "product", serviceMode: "durable", suggestion: "バッグの種類が分かるように具体的に入力してください。" },
+  fashionAccessory: { kind: "product", serviceMode: "durable", suggestion: "帽子や腕時計など、具体的な品名を入力してください。" },
+  beautyProduct: { kind: "product", serviceMode: "consumable", suggestion: "美容用品名が分かるように「ヘアオイル」など具体的に入力してください。" },
+  beautyService: { kind: "service", serviceMode: "single", suggestion: "サービス内容が分かるように「美容院」や「散髪」のように入力してください。" },
+  healthDevice: { kind: "product", serviceMode: "durable", suggestion: "健康用品名が分かるように「体重計」など具体的に入力してください。" },
+  healthApp: { kind: "product", serviceMode: "durable", suggestion: "アプリ名が分かるように「ヘルスケアアプリ」など具体的に入力してください。" },
+  healthService: { kind: "service", serviceMode: "single", suggestion: "サービス内容が分かるように「整体」や「健康診断」のように入力してください。" },
+  healthSubscription: { kind: "service", serviceMode: "recurring", suggestion: "継続サービス名が分かるように「ジム月会費」など具体的に入力してください。" },
+  medicalCare: { kind: "service", serviceMode: "single", suggestion: "医療内容が分かるように具体的に入力してください。" },
+  insurance: { kind: "service", serviceMode: "recurring", suggestion: "保険の種類が分かるように具体的に入力してください。" },
+  homeDevice: { kind: "product", serviceMode: "durable", suggestion: "機器名が分かるように具体的に入力してください。" },
+  homeRepair: { kind: "service", serviceMode: "repair", repairDomain: "homeDevice", suggestion: "修理対象が分かるように「スマホ修理」や「洗濯機修理」のように入力してください。" },
+  workTool: { kind: "product", serviceMode: "durable", suggestion: "仕事用途が分かるように「仕事用ノートPC」など具体的に入力してください。" },
+  gameEntertainment: { kind: "product", serviceMode: "entertainment", suggestion: "娯楽内容が分かるように「PCゲーム」や「スマホゲーム課金」のように入力してください。" },
+  event: { kind: "service", serviceMode: "single", suggestion: "イベント内容が分かるように「映画チケット」など具体的に入力してください。" },
+  dailyGoods: { kind: "product", serviceMode: "consumable", suggestion: "日用品名が分かるように具体的に入力してください。" },
+  timeSavingService: { kind: "service", serviceMode: "single", suggestion: "サービス内容が分かるように「家事代行」など具体的に入力してください。" },
+  sponsorship: { kind: "service", serviceMode: "support", suggestion: "応援内容が分かるように「スポンサー枠」など具体的に入力してください。" },
+  gift: { kind: "product", serviceMode: "generic", suggestion: "プレゼント内容が分かるように具体的に入力してください。" },
+  subscription: { kind: "service", serviceMode: "recurring", suggestion: "サブスク内容が分かるように具体的に入力してください。" },
+  fashionRepair: { kind: "service", serviceMode: "repair", repairDomain: "fashion", suggestion: "修理対象が分かるように「靴修理」や「バッグ修理」のように入力してください。" },
+  genericRepair: { kind: "service", serviceMode: "repair", repairDomain: "generic", suggestion: "修理対象が分かるように、もう少し具体的に入力してください。" },
+  otherProduct: { kind: "product", serviceMode: "generic", suggestion: "商品名をもう少し具体的に入力してください。" },
+  otherService: { kind: "service", serviceMode: "single", suggestion: "どんなサービスか分かるように、もう少し具体的に入力してください。" }
+};
 
 const CATEGORY_DEFINITIONS = {
   carMaintenance: {
-    label: CATEGORY_LABELS.carMaintenance,
-    suggestion: "整備内容が分かるように「車検」や「エンジンオイル交換」のように入力してください。",
-    intros: [
-      "ちゃんと走れる状態を保つための出費なら、先に払う意味があります。",
-      "整備や修理は、見た目より普通に使える状態を守るためのお金です。",
-      "不安なく乗れる状態に戻るなら、その時点で価値があります。"
-    ],
     templates: [
-      ({ item, formattedAmount, intro }) =>
-        `${item}に${formattedAmount}を出したのは、贅沢ではなく普通に使える状態を保つためです。${intro} 安心して乗れるなら、この出費は必要経費です。`,
-      ({ item, formattedAmount, intro }) =>
-        `${formattedAmount}の${item}は軽い話ではありませんが、後回しにせず整えたなら十分まともです。${intro} ちゃんと使える状態に戻るなら、払う意味はあります。`,
-      ({ item, formattedAmount, intro }) =>
-        `${item}に${formattedAmount}を払ったのは、派手さより実用を優先した形です。${intro} 乗るたびの不安が減るなら、それで十分です。`
+      ({ item, formattedAmount }) =>
+        `${item}に${formattedAmount}を出したのは、贅沢ではなく普通に走れる状態を保つためです。安全性や信頼性を維持できるなら、この出費は必要経費です。`,
+      ({ item, formattedAmount }) =>
+        `${formattedAmount}の${item}は軽い話ではありませんが、故障の悪化を防いで安心して走れる状態へ戻すなら十分意味があります。`,
+      ({ item, formattedAmount }) =>
+        `${item}に${formattedAmount}を払ったのは、移動できない状態を避けるためだと思えば自然です。ちゃんと使える状態に戻るなら、払う意味はあります。`
     ]
   },
   carCustom: {
-    label: CATEGORY_LABELS.carCustom,
-    suggestion: "カスタム内容が分かるように「車高調」や「マフラー」のように入力してください。",
-    intros: [
-      "カスタムは修理とは別で、乗っていて気分が上がるところにちゃんと意味があります。",
-      "見た目や走りが自分の好みに寄るなら、その満足は案外大きいです。",
-      "好きで手を入れた部分があると、乗る時間そのものが少し楽しくなります。"
-    ],
     templates: [
-      ({ item, formattedAmount, intro }) =>
-        `${item}に${formattedAmount}を出したのは、壊れたからではなく乗る楽しさを上げるためです。${intro} 好きで付けたと思えるなら、十分納得できます。`,
-      ({ item, formattedAmount, intro }) =>
-        `${formattedAmount}の${item}は実用品というより趣味の出費ですが、そのぶん満足は分かりやすいです。${intro} 乗るたびに気分が上がるなら悪くありません。`,
-      ({ item, formattedAmount, intro }) =>
-        `${item}に${formattedAmount}を払ったのは、必要最低限ではなく自分の好みに寄せるためです。${intro} そこに価値を感じているなら十分ありです。`
+      ({ item, formattedAmount }) =>
+        `${item}に${formattedAmount}を出したのは、壊れたからではなく乗る楽しさや見た目の満足を上げるためです。好きで手を入れたと思えるなら、十分納得できます。`,
+      ({ item, formattedAmount }) =>
+        `${formattedAmount}の${item}は趣味の出費ですが、そのぶん満足は分かりやすいです。見た目や走りが自分の好みに寄るなら悪くありません。`,
+      ({ item, formattedAmount }) =>
+        `${item}に${formattedAmount}を払ったのは、必要最低限ではなく自分の好みに寄せるためです。そこに価値を感じているなら十分ありです。`
     ]
   },
   transport: {
-    label: CATEGORY_LABELS.transport,
-    suggestion: "交通手段が分かるように「タクシー代」や「駐車場代」のように入力してください。",
-    intros: [
-      "移動そのものにお金を使うのは、生活を回すための基本コストです。",
-      "目的地まで楽にたどり着けるだけで、その日のしんどさは変わります。",
-      "時間や体力を無駄にしないなら、交通費にはちゃんと意味があります。"
-    ],
     templates: [
-      ({ item, formattedAmount, intro }) =>
-        `${item}に${formattedAmount}を払ったのは、単なる出費というより移動を成立させるためです。${intro} ちゃんと着けている時点で十分役に立っています。`,
-      ({ item, formattedAmount, intro }) =>
-        `${formattedAmount}の${item}は地味でも、移動をスムーズにするためのお金です。${intro} その日の手間や疲れが減るなら、普通に意味があります。`,
-      ({ item, formattedAmount, intro }) =>
-        `${item}に${formattedAmount}を出したのは、時間か体力のどちらかを守るためだと思えば自然です。${intro} それで一日が回るなら十分です。`
+      ({ item, formattedAmount }) =>
+        `${item}に${formattedAmount}を払ったのは、単なる出費というより移動を成立させるためです。時間か体力のどちらかを守れているなら十分意味があります。`,
+      ({ item, formattedAmount }) =>
+        `${formattedAmount}の${item}は地味でも、移動をスムーズにするためのお金です。その日の手間や疲れが減るなら、普通にありです。`,
+      ({ item, formattedAmount }) =>
+        `${item}に${formattedAmount}を出したのは、その日の移動を楽に回すためです。ちゃんと着けている時点で役に立っています。`
     ]
   },
   premiumTransit: {
-    label: CATEGORY_LABELS.transport,
-    suggestion: "移動内容が分かるように「新幹線グリーン車」のように入力してください。",
-    intros: [
-      "移動で疲れすぎないことにお金を使うのは、思ったよりちゃんと意味があります。",
-      "目的地に着いた時点でぐったりしていないだけで、かなり違います。",
-      "移動を少しラクにする出費は、贅沢というより消耗を減らすためのものです。"
-    ],
     templates: [
-      ({ item, formattedAmount, intro }) =>
-        `${item}に${formattedAmount}を払ったのは、贅沢というより移動で疲れないためです。${intro} 目的地でちゃんと動けるなら、結果的に得しています。`,
-      ({ item, formattedAmount, intro }) =>
-        `${formattedAmount}の${item}は高く見えても、移動でぐったりしないだけで意味があります。${intro} その後の動きやすさまで含めれば、必要な経費です。`,
-      ({ item, formattedAmount, intro }) =>
-        `${item}に${formattedAmount}を足したのは、席の違いというより体力を残すためです。${intro} 移動で潰れないなら、そのぶんは十分回収できます。`
+      ({ item, formattedAmount }) =>
+        `${item}に${formattedAmount}を払ったのは、贅沢というより移動で疲れないためです。目的地でちゃんと動けるなら、結果的に得しています。`,
+      ({ item, formattedAmount }) =>
+        `${formattedAmount}の${item}は高く見えても、移動でぐったりしないだけで意味があります。その後の動きやすさまで含めれば、必要な経費です。`,
+      ({ item, formattedAmount }) =>
+        `${item}に${formattedAmount}を足したのは、席の違いというより体力を残すためです。移動で潰れないなら、そのぶんは十分回収できます。`
     ]
   },
   travelStay: {
-    label: CATEGORY_LABELS.travelStay,
-    suggestion: "旅行内容が分かるように「ホテル宿泊」や「旅館」のように入力してください。",
-    intros: [
-      "旅行や宿泊は、その場で終わるようで案外あとに残ります。",
-      "行けるときに行っておく方が、あとから変に引っかかりにくいです。",
-      "ちゃんと休めた、行ってよかったと思えたなら、その時点で意味があります。"
-    ],
     templates: [
-      ({ item, formattedAmount, intro }) =>
-        `${item}に${formattedAmount}を出したのは、移動や宿代そのものより、その時間をちゃんと取ったという話です。${intro} それなら、ただ消えたお金ではありません。`,
-      ({ item, formattedAmount, intro }) =>
-        `${formattedAmount}の${item}は安い話ではなくても、気分が切り替わったなら十分ありです。${intro} 行かなかった後悔を避けられるなら、なおさら悪くありません。`,
-      ({ item, intro }) =>
-        `${item}は物が残る買い物ではありませんが、ちゃんと休めたとか楽しかったが残るなら成立しています。${intro}`
+      ({ item, formattedAmount }) =>
+        `${item}に${formattedAmount}を出したのは、移動や宿代そのものより、その時間をちゃんと取ったという話です。気分が切り替わったなら、ただ消えたお金ではありません。`,
+      ({ item, formattedAmount }) =>
+        `${formattedAmount}の${item}は安い話ではなくても、ちゃんと休めたとか行ってよかったが残るなら十分ありです。`,
+      ({ item }) =>
+        `${item}は物が残る買い物ではありませんが、その日の満足や思い出が残るなら成立しています。`
     ]
   },
   food: {
-    label: CATEGORY_LABELS.food,
-    suggestion: "食事内容が分かるように「海鮮丼」や「焼肉」のように入力してください。",
-    intros: [
-      "ちゃんと満足できる食事は、その日の機嫌まで変えます。",
-      "食事は空腹を埋めるだけではなく、気分を戻す役目もあります。",
-      "食べてよかったが残るなら、その時点で十分意味があります。"
-    ],
     templates: [
-      ({ item, formattedAmount, intro }) =>
-        `${item}に${formattedAmount}を払ったのは、ただ食べるためではなく、ちゃんと満足するためです。${intro} それなら、この出費は普通に成立しています。`,
-      ({ item, formattedAmount, intro }) =>
-        `${formattedAmount}の${item}は安いとは言いませんが、満足できたなら高すぎるとも言えません。${intro} 妥協して物足りなさが残るより、ずっとましです。`,
-      ({ item, intro }) =>
-        `${item}は一食として見ると強めでも、ちゃんと気分まで上がったなら意味があります。${intro} ただ高いだけの出費ではありません。`
+      ({ item, formattedAmount }) =>
+        `${item}に${formattedAmount}を払ったのは、ただ食べるためではなく、ちゃんと満足するためです。食べてよかったが残るなら、この出費は普通に成立しています。`,
+      ({ item, formattedAmount }) =>
+        `${formattedAmount}の${item}は安いとは言いませんが、満足できたなら高すぎるとも言えません。妥協して物足りなさが残るより、ずっとましです。`,
+      ({ item }) =>
+        `${item}は一食として見ると強めでも、ちゃんと気分まで上がったなら意味があります。`
     ]
   },
   shoes: {
-    label: CATEGORY_LABELS.shoes,
-    suggestion: "靴の種類が分かるように「スニーカー」など具体的に入力してください。",
-    intros: [
-      "よく履く一足なら、値段は使うたびに薄まっていきます。",
-      "履きやすくて出番が多い靴は、結局いちばん元が取りやすいです。",
-      "気に入った靴があるだけで、出かける気分はかなり変わります。"
-    ],
     templates: [
-      ({ item, perUse100, intro }) =>
-        `${item}を100回履くと仮定すれば1回あたり${perUse100}です。${intro} それだけ履くなら、けして高すぎる買い物ではありません。`,
-      ({ item, perDay1Year, intro }) =>
-        `${item}を1年間使う前提なら1日あたり約${perDay1Year}です。${intro} 毎回ちゃんと履くなら、普通に元は取れます。`,
-      ({ item, formattedAmount, intro }) =>
-        `${item}に${formattedAmount}を出したのは、勢いだけではなく出番があるからです。${intro} よく履くなら、その金額はちゃんと回収できます。`
+      ({ item, perUse100 }) =>
+        `${item}を100回履くと仮定すれば1回あたり${perUse100}です。よく履く一足なら、けして高すぎる買い物ではありません。`,
+      ({ item, perDay1Year }) =>
+        `${item}を1年間使う前提なら1日あたり約${perDay1Year}です。履きやすくて出番が多いなら、普通に元は取れます。`,
+      ({ item, formattedAmount }) =>
+        `${item}に${formattedAmount}を出したのは、勢いだけではなく出番があるからです。よく履くなら、その金額はちゃんと回収できます。`
     ]
   },
-  fashion: {
-    label: CATEGORY_LABELS.fashion,
-    suggestion: "服の種類が分かるように「コート」や「帽子」のように入力してください。",
-    intros: [
-      "合わせやすい服は、結局いちばん出番が多くなります。",
-      "気に入っている服があるだけで、外に出る気分はかなり違います。",
-      "長く着る前提なら、値段だけで高い安いは決めにくいです。"
-    ],
+  fashionWear: {
     templates: [
-      ({ item, perDay1Year, intro }) =>
-        `${item}を1年間使う前提なら1日あたり約${perDay1Year}です。${intro} ちゃんと着るなら、その金額は十分ありです。`,
-      ({ item, perDay3Years, intro }) =>
-        `3年間使えれば、${item}は1日あたり約${perDay3Years}です。${intro} 長く付き合えるなら、かなり落ち着いた買い方です。`,
-      ({ item, formattedAmount, intro }) =>
-        `${item}に${formattedAmount}を出したのは、見た目だけではなく出番を見込んでいるからです。${intro} よく使うなら、十分納得できます。`
+      ({ item, perDay1Year }) =>
+        `${item}を1年間使う前提なら1日あたり約${perDay1Year}です。普段使いする回数が多いなら、その金額は十分ありです。`,
+      ({ item, perDay3Years }) =>
+        `3年間使えれば、${item}は1日あたり約${perDay3Years}です。長く身につける前提なら、かなり落ち着いた買い方です。`,
+      ({ item, formattedAmount }) =>
+        `${item}に${formattedAmount}を出したのは、見た目だけではなく出番を見込んでいるからです。コーディネートに取り入れやすいなら十分納得できます。`
+    ]
+  },
+  bag: {
+    templates: [
+      ({ item, perDay1Year }) =>
+        `${item}を1年間使う前提なら1日あたり約${perDay1Year}です。普段使いしやすくて出番が多いなら、十分元は取れます。`,
+      ({ item, formattedAmount }) =>
+        `${item}に${formattedAmount}を出したのは、見た目だけではなく使いやすさ込みです。持ち歩くたびに気分が上がるなら悪くありません。`,
+      ({ item, perUse100 }) =>
+        `${item}を100回使うと仮定すれば1回あたり${perUse100}です。荷物がまとまって毎回これで済むなら、そこまで高い話ではありません。`
+    ]
+  },
+  fashionAccessory: {
+    templates: [
+      ({ item, perDay1Year }) =>
+        `${item}を1年間使う前提なら1日あたり約${perDay1Year}です。身につけるたびに気分が上がるなら十分ありです。`,
+      ({ item, formattedAmount }) =>
+        `${item}に${formattedAmount}を出したのは、普段のコーディネートに取り入れやすいからです。出番が多いなら、その金額にも納得できます。`,
+      ({ item, formattedAmount }) =>
+        `${formattedAmount}の${item}は強く見えても、普段使いして満足が積み上がるなら意味があります。`
     ]
   },
   beautyProduct: {
-    label: CATEGORY_LABELS.beautyProduct,
-    suggestion: "美容用品名が分かるように「ヘアオイル」など具体的に入力してください。",
-    intros: [
-      "毎日の身支度が少しラクになるだけで、気分はかなり違います。",
-      "美容用品は見た目だけではなく、自分の気分を整える道具でもあります。",
-      "使うたびに小さく効くものなら、案外ちゃんと元は取れます。"
-    ],
     templates: [
-      ({ item, perDay1Year, intro }) =>
-        `${item}を1年間使う前提なら1日あたり約${perDay1Year}です。${intro} そのくらいで調子よく過ごせるなら、十分ありです。`,
-      ({ item, formattedAmount, intro }) =>
-        `${item}に${formattedAmount}を出したのは、贅沢というより自分を整えるためです。${intro} 毎日の満足度が上がるなら、悪くありません。`,
-      ({ item, formattedAmount, intro }) =>
-        `${formattedAmount}の${item}は派手に見えても、使って気分が整うなら意味があります。${intro} その効果があるなら、この出費は成立しています。`
+      ({ item, perDay1Year }) =>
+        `${item}を1年間使う前提なら1日あたり約${perDay1Year}です。毎日の身支度が少しラクになるなら、十分ありです。`,
+      ({ item, formattedAmount }) =>
+        `${item}に${formattedAmount}を出したのは、贅沢というより自分を整えるためです。使うたびに気分が整うなら悪くありません。`,
+      ({ item, formattedAmount }) =>
+        `${formattedAmount}の${item}は派手に見えても、日常の満足度を上げるなら意味があります。`
     ]
   },
   beautyService: {
-    label: CATEGORY_LABELS.beautyService,
-    suggestion: "サービス内容が分かるように「美容院」や「散髪」のように入力してください。",
-    intros: [
-      "一度整うだけで、その後しばらく気分よく過ごせるなら十分意味があります。",
-      "身だしなみを整える出費は、ただの贅沢では終わりません。",
-      "見た目に納得できるだけで、余計な気疲れが減ります。"
-    ],
     templates: [
-      ({ item, formattedAmount, intro }) =>
-        `${item}に${formattedAmount}を払ったのは、見た目を整えて気分まで軽くするためです。${intro} それなら、この出費はかなり自然です。`,
-      ({ item, formattedAmount, intro }) =>
-        `${formattedAmount}の${item}は物が残らないぶん高く見えても、整ったあとの気分が続くなら十分ありです。${intro}`,
-      ({ item, formattedAmount, intro }) =>
-        `${item}に${formattedAmount}を出したのは、その場限りではなく、その後の過ごしやすさを買ったと思えば納得できます。${intro}`
+      ({ item, formattedAmount }) =>
+        `${item}に${formattedAmount}を払ったのは、見た目を整えて気分まで軽くするためです。整ったあとの過ごしやすさまで含めれば自然な出費です。`,
+      ({ item, formattedAmount }) =>
+        `${formattedAmount}の${item}は物が残らないぶん高く見えても、身だしなみに納得できるなら十分ありです。`,
+      ({ item, formattedAmount }) =>
+        `${item}に${formattedAmount}を出したのは、その場限りではなく、その後の過ごしやすさを買ったと思えば納得できます。`
     ]
   },
-  healthFitness: {
-    label: CATEGORY_LABELS.healthFitness,
-    suggestion: "健康や運動の内容が分かるように「整体」や「ジムメンバーシップ」のように入力してください。",
-    intros: [
-      "体が楽になったり状態を把握しやすくなったりするなら、その時点で価値があります。",
-      "調子を整えることにお金を使うのは、案外かなりまともです。",
-      "無理を長引かせるより、先に整えた方が結果的に得なことは多いです。"
-    ],
+  healthDevice: {
     templates: [
-      ({ item, formattedAmount, intro }) =>
-        `${item}に${formattedAmount}を払ったのは、その場しのぎではなく自分の調子を整えるためです。${intro} 管理しやすくなる、続けやすくなる、そのどちらかでも十分意味があります。`,
-      ({ item, perDay1Year, intro }) =>
-        `${item}を1年間続ける前提なら1日あたり約${perDay1Year}です。${intro} そのくらいで状態が整うなら、かなり安い方です。`,
-      ({ item, formattedAmount, intro }) =>
-        `${formattedAmount}の${item}は高く見えても、体や生活が少しでも回りやすくなるなら意味があります。${intro} 結果的に得する出費です。`
+      ({ item, perDay1Year }) =>
+        `${item}を1年間使う前提なら1日あたり約${perDay1Year}です。自宅で繰り返し使えて日常的な身体管理に回せるなら十分ありです。`,
+      ({ item, perDay3Years }) =>
+        `3年間使えれば、${item}は1日あたり約${perDay3Years}です。自分の状態を見たり整えたりする道具なら、長い目で見て納得できます。`,
+      ({ item, formattedAmount }) =>
+        `${item}に${formattedAmount}を出したのは、体の管理を後回しにしないためです。自宅で使えて繰り返し役立つなら悪くありません。`
+    ]
+  },
+  healthApp: {
+    templates: [
+      ({ item, formattedAmount }) =>
+        `${item}に${formattedAmount}を出したのは、自分の状態を把握しやすくして管理を続けやすくするためです。ちゃんと使うなら、かなり実用的な出費です。`,
+      ({ item, perDay1Year }) =>
+        `${item}を1年間使う前提なら1日あたり約${perDay1Year}です。記録や管理を習慣化しやすくなるなら、その金額は十分ありです。`,
+      ({ item, formattedAmount }) =>
+        `${formattedAmount}の${item}は派手ではなくても、体調や服薬の管理が楽になるなら意味があります。`
+    ]
+  },
+  healthService: {
+    templates: [
+      ({ item, formattedAmount }) =>
+        `${item}に${formattedAmount}を払ったのは、その場しのぎではなく身体や見た目の状態を整えるためです。不調や違和感を放置しないなら、この出費は十分自然です。`,
+      ({ item, formattedAmount }) =>
+        `${formattedAmount}の${item}は物が残らなくても、状態が整ってラクになるなら意味があります。`,
+      ({ item, formattedAmount }) =>
+        `${item}に${formattedAmount}を出したのは、一度の施術やケアで今の状態を立て直すためです。そのあと過ごしやすくなるなら十分ありです。`
+    ]
+  },
+  healthSubscription: {
+    templates: [
+      ({ item, formattedAmount }) =>
+        `${item}に${formattedAmount}を払ったのは、運動やケアを続ける環境を確保するためです。月額で機会を作って習慣化しやすくなるなら、かなり意味があります。`,
+      ({ item, formattedAmount }) =>
+        `${formattedAmount}の${item}は単発ではなく、続ける前提の出費です。サボりにくい環境を買っていると思えば自然です。`,
+      ({ item, perDay1Year }) =>
+        `${item}を1年間続ける前提なら1日あたり約${perDay1Year}です。そのくらいで運動の機会を作れるなら、案外安い方です。`
+    ]
+  },
+  medicalCare: {
+    templates: [
+      ({ item, formattedAmount }) =>
+        `${item}に${formattedAmount}を払ったのは、不調を放置しないためです。状態を確認したり整えたりして、将来の大きな負担を避けるなら十分意味があります。`,
+      ({ item, formattedAmount }) =>
+        `${formattedAmount}の${item}は楽しい出費ではありませんが、身体を維持するためのお金だと思えばかなりまっとうです。`,
+      ({ item, formattedAmount }) =>
+        `${item}に${formattedAmount}を出したのは、今ある違和感や不安をそのままにしないためです。早めに手を打てるなら悪くありません。`
+    ]
+  },
+  insurance: {
+    templates: [
+      ({ item, formattedAmount }) =>
+        `${item}に${formattedAmount}を払ったのは、使うためというより万一の負担の上限を決めるためです。大きな損失をそのまま受けないための費用だと思えば自然です。`,
+      ({ item, formattedAmount }) =>
+        `${formattedAmount}の${item}は目に見える満足を買う出費ではありませんが、備えとしてはかなり筋が通っています。`,
+      ({ item, formattedAmount }) =>
+        `${item}に${formattedAmount}を出したのは、安心を買うというより、もしものときのダメージを小さくするためです。`
     ]
   },
   homeDevice: {
-    label: CATEGORY_LABELS.homeDevice,
-    suggestion: "機器名が分かるように「AirPods Pro」や「洗濯機の交換部品」のように入力してください。",
-    intros: [
-      "毎日触る機器は、少し使いやすいだけで差が積み上がります。",
-      "日々の小さな引っかかりが減るなら、その時点で意味があります。",
-      "長く使う前提のものは、見た目より元が取りやすいです。"
-    ],
     templates: [
-      ({ item, perDay1Year, intro }) =>
-        `${item}を1年間使う前提なら1日あたり約${perDay1Year}です。${intro} 毎日使うなら、そこまで高い話ではありません。`,
-      ({ item, perDay3Years, intro }) =>
-        `3年間使えれば、${item}は1日あたり約${perDay3Years}です。${intro} 長く使うなら、十分納得できます。`,
-      ({ item, formattedAmount, intro }) =>
-        `${item}に${formattedAmount}を出したのは、単なる物欲というより使い勝手を上げるためです。${intro} 生活が少しラクになるなら、いい買い物です。`
+      ({ item, perDay1Year }) =>
+        `${item}を1年間使う前提なら1日あたり約${perDay1Year}です。毎日触るものなら、そこまで高い話ではありません。`,
+      ({ item, perDay3Years }) =>
+        `3年間使えれば、${item}は1日あたり約${perDay3Years}です。長く使うなら十分納得できます。`,
+      ({ item, formattedAmount }) =>
+        `${item}に${formattedAmount}を出したのは、単なる物欲というより使い勝手を上げるためです。生活が少しラクになるなら、いい買い物です。`
+    ]
+  },
+  homeRepair: {
+    templates: [
+      ({ item, formattedAmount, repairContext }) =>
+        `${item}に${formattedAmount}を払ったのは、買い替えずに使い続けられる状態へ戻すためです。${repairContext.digital ? "必要な機能やデータ環境を守れるなら" : "生活上の不便を解消できるなら"}、十分意味があります。`,
+      ({ item, formattedAmount, repairContext }) =>
+        `${formattedAmount}の${item}は軽い話ではありませんが、${repairContext.digital ? "機能や環境を維持できるなら" : "必要な機能を回復できるなら"}、新しく買い直す前に選ぶ理由としてはかなり自然です。`,
+      ({ item, formattedAmount }) =>
+        `${item}に${formattedAmount}を出したのは、壊れたまま不便を抱えるより、今あるものを使い続けるためです。`
     ]
   },
   workTool: {
-    label: CATEGORY_LABELS.workTool,
-    suggestion: "仕事用途が分かるように「仕事用ノートPC」など具体的に入力してください。",
-    intros: [
-      "仕事で毎日触るものは、少しの差でも積み上がります。",
-      "道具の引っかかりが減るだけで、作業のしんどさはかなり変わります。",
-      "効率が上がるなら、その時点で十分理由になります。"
-    ],
     templates: [
-      ({ item, perDay1Year, intro }) =>
-        `${item}を1年間使う前提なら1日あたり約${perDay1Year}です。${intro} 仕事が回りやすくなるなら、かなり堅い出費です。`,
-      ({ item, perUse100, intro }) =>
-        `${item}を100回使うと仮定すれば1回あたり${perUse100}です。${intro} 作業効率が上がるなら、必要な投資です。`,
-      ({ item, formattedAmount, intro }) =>
-        `${item}に${formattedAmount}を出したのは、見た目より仕事のしんどさを減らすためです。${intro} それで生産性が上がるなら十分得しています。`
+      ({ item, perDay1Year }) =>
+        `${item}を1年間使う前提なら1日あたり約${perDay1Year}です。仕事が回りやすくなるなら、かなり堅い出費です。`,
+      ({ item, perUse100 }) =>
+        `${item}を100回使うと仮定すれば1回あたり${perUse100}です。作業効率が上がるなら、必要な投資です。`,
+      ({ item, formattedAmount }) =>
+        `${item}に${formattedAmount}を出したのは、見た目より仕事のしんどさを減らすためです。それで生産性が上がるなら十分得しています。`
     ]
   },
   gameEntertainment: {
-    label: CATEGORY_LABELS.gameEntertainment,
-    suggestion: "娯楽内容が分かるように「PCゲーム」や「スマホゲーム課金」のように入力してください。",
-    intros: [
-      "ちゃんと楽しめるものがあるだけで、しんどい日の持ち方は変わります。",
-      "趣味に使うお金は、気力を削り切らないための逃げ場でもあります。",
-      "好きなものにちゃんと使えたなら、それだけで意味があります。"
-    ],
     templates: [
-      ({ item, formattedAmount, intro }) =>
-        `${item}に${formattedAmount}を出したのは、ただの遊び代というより気分を保つためです。${intro} ちゃんと楽しめるなら、この出費は十分ありです。`,
-      ({ item, perUse100, intro }) =>
-        `${item}を100回触れると仮定すれば1回あたり${perUse100}です。${intro} そのくらいで気力が持つなら悪くありません。`,
-      ({ item, formattedAmount, intro }) =>
-        `${formattedAmount}の${item}は趣味の出費ですが、好きなものがある方が日々は回しやすいです。${intro} それなら、無駄と切るほどではありません。`
+      ({ item, formattedAmount }) =>
+        `${item}に${formattedAmount}を出したのは、ただの遊び代というより気分を保つためです。ちゃんと楽しめるなら、この出費は十分ありです。`,
+      ({ item, perUse100 }) =>
+        `${item}を100回触れると仮定すれば1回あたり${perUse100}です。そのくらいで気力が持つなら悪くありません。`,
+      ({ item, formattedAmount }) =>
+        `${formattedAmount}の${item}は趣味の出費ですが、好きなものがある方が日々は回しやすいです。それなら、無駄と切るほどではありません。`
     ]
   },
   event: {
-    label: CATEGORY_LABELS.event,
-    suggestion: "イベント内容が分かるように「映画チケット」や「美術館入場料」のように入力してください。",
-    intros: [
-      "体験に使うお金は、その場だけで終わるようで案外あとに残ります。",
-      "見たものや感じたものが残るなら、それだけで十分意味があります。",
-      "ちゃんと楽しめたなら、その日の出費としてかなり健全です。"
-    ],
     templates: [
-      ({ item, formattedAmount, intro }) =>
-        `${item}に${formattedAmount}を払ったのは、物を買うというより体験を取りにいった形です。${intro} それなら、かなり自然なお金の使い方です。`,
-      ({ item, formattedAmount, intro }) =>
-        `${formattedAmount}の${item}は安くはなくても、見たあとに満足が残るなら十分ありです。${intro}`,
-      ({ item, intro }) =>
-        `${item}は形に残る買い物ではありませんが、ちゃんと楽しかったが残るなら成立しています。${intro}`
+      ({ item, formattedAmount }) =>
+        `${item}に${formattedAmount}を払ったのは、物を買うというより体験を取りにいった形です。見たものや感じたものが残るなら、かなり自然なお金の使い方です。`,
+      ({ item, formattedAmount }) =>
+        `${formattedAmount}の${item}は安くはなくても、見たあとに満足が残るなら十分ありです。`,
+      ({ item }) =>
+        `${item}は形に残る買い物ではありませんが、ちゃんと楽しかったが残るなら成立しています。`
     ]
   },
   dailyGoods: {
-    label: CATEGORY_LABELS.dailyGoods,
-    suggestion: "日用品名が分かるように「ハンドソープ」など具体的に入力してください。",
-    intros: [
-      "日用品は派手ではなくても、切らすと普通に困ります。",
-      "毎日の小さな快適さを支えるものには、それだけで意味があります。",
-      "ちゃんと使うものなら、無理に贅沢扱いする話でもありません。"
-    ],
     templates: [
-      ({ item, formattedAmount, intro }) =>
-        `${item}に${formattedAmount}を出したのは、生活を普通に回すためです。${intro} それなら、この出費はかなりまっとうです。`,
-      ({ item, formattedAmount, intro }) =>
-        `${formattedAmount}の${item}は地味でも、毎日使うなら十分理由があります。${intro}`,
-      ({ item, formattedAmount, intro }) =>
-        `${item}に${formattedAmount}を払ったのは、贅沢ではなく日常の快適さを保つためです。${intro} ちゃんと使うなら問題ありません。`
+      ({ item, formattedAmount }) =>
+        `${item}に${formattedAmount}を出したのは、生活を普通に回すためです。派手ではなくても、毎日使うなら十分理由があります。`,
+      ({ item, formattedAmount }) =>
+        `${formattedAmount}の${item}は地味でも、切らすと普通に困る種類の出費です。だからこそ、ちゃんと使うなら問題ありません。`,
+      ({ item, formattedAmount }) =>
+        `${item}に${formattedAmount}を払ったのは、贅沢ではなく日常の快適さを保つためです。`
     ]
   },
   timeSavingService: {
-    label: CATEGORY_LABELS.timeSavingService,
-    suggestion: "サービス内容が分かるように「家事代行」や「宿題代行サービス」のように入力してください。",
-    intros: [
-      "時間を買う出費は、疲れている時ほど意味が分かりやすいです。",
-      "自分で抱えずに外へ出した分だけ、気力に余裕が戻ります。",
-      "面倒をお金で減らすのは、かなり実用的な判断です。"
-    ],
     templates: [
-      ({ item, formattedAmount, intro }) =>
-        `${item}に${formattedAmount}を払ったのは、さぼりではなく時間と手間を買った形です。${intro} そのぶん他のことに回せるなら、十分得しています。`,
-      ({ item, formattedAmount, intro }) =>
-        `${formattedAmount}の${item}は安くはなくても、自分で抱える負担が減るなら意味があります。${intro} 楽になった時点で、この出費は成立しています。`,
-      ({ item, formattedAmount, intro }) =>
-        `${item}に${formattedAmount}を出したのは、自分の気力をすり減らさないためです。${intro} 時短として効くなら、かなりまともです。`
+      ({ item, formattedAmount }) =>
+        `${item}に${formattedAmount}を払ったのは、さぼりではなく時間と手間を買った形です。そのぶん他のことに回せるなら、十分得しています。`,
+      ({ item, formattedAmount }) =>
+        `${formattedAmount}の${item}は安くはなくても、自分で抱える負担が減るなら意味があります。楽になった時点で、この出費は成立しています。`,
+      ({ item, formattedAmount }) =>
+        `${item}に${formattedAmount}を出したのは、自分の気力をすり減らさないためです。時短として効くなら、かなりまともです。`
     ]
   },
   sponsorship: {
-    label: CATEGORY_LABELS.sponsorship,
-    suggestion: "応援内容が分かるように「スポンサー枠」など具体的に入力してください。",
-    intros: [
-      "応援したいものにお金を使うなら、それだけで十分理由になります。",
-      "物が残る買い方ではなくても、納得して払っているならそれでいいです。",
-      "損得だけで見る種類の出費ではありません。"
-    ],
     templates: [
-      ({ item, formattedAmount, intro }) =>
-        `${item}に${formattedAmount}を出したのは、物を買ったというより応援にお金を使った形です。${intro} 自分で納得しているなら、それで十分です。`,
-      ({ item, formattedAmount, intro }) =>
-        `${formattedAmount}の${item}は実用品ではなくても、「応援したいから払う」で筋は通ります。${intro} 無理に損得へ落とし込まなくていい出費です。`,
-      ({ item, formattedAmount, intro }) =>
-        `${formattedAmount}の${item}は形に残る買い物ではなくても、気持ちよく払えたなら成立しています。${intro}`
-    ]
-  },
-  adultService: {
-    label: "その他のサービス",
-    suggestion: "内容が分かるように、もう少し具体的に入力してください。",
-    intros: [
-      "人には言いにくい出費でも、自分の中で区切りがつくなら意味はあります。",
-      "胸を張って説明する類いではなくても、全部を無駄と切る話でもありません。",
-      "気分が切り替わって引きずらなかったなら、それなりに役目は果たしています。"
-    ],
-    templates: [
-      ({ item, formattedAmount, intro }) =>
-        `${item}に${formattedAmount}を使ったのは、人に説明しやすい出費ではありません。${intro} その場で切り替えができたなら、完全に無意味とも言い切れません。`,
-      ({ item, formattedAmount, intro }) =>
-        `${formattedAmount}の${item}は褒められる使い方ではなくても、自分の中で消化して終われるなら話は別です。${intro}`
+      ({ item, formattedAmount }) =>
+        `${item}に${formattedAmount}を出したのは、物を買ったというより応援にお金を使った形です。自分で納得しているなら、それで十分です。`,
+      ({ item, formattedAmount }) =>
+        `${formattedAmount}の${item}は実用品ではなくても、「応援したいから払う」で筋は通ります。無理に損得へ落とし込まなくていい出費です。`,
+      ({ item, formattedAmount }) =>
+        `${formattedAmount}の${item}は形に残る買い物ではなくても、気持ちよく払えたなら成立しています。`
     ]
   },
   gift: {
-    label: CATEGORY_LABELS.gift,
-    suggestion: "プレゼント内容が分かるように具体的に入力してください。",
-    intros: [
-      "誰かのために使うお金は、自分だけの損得では測りにくいです。",
-      "喜んでもらえたなら、その時点でかなり意味があります。",
-      "気持ちよく渡せたなら、それで十分成立しています。"
-    ],
     templates: [
-      ({ item, formattedAmount, intro }) =>
-        `${item}に${formattedAmount}を出したのは、物そのものより気持ちを渡すためです。${intro} それなら、この出費はかなり自然です。`,
-      ({ item, formattedAmount, intro }) =>
-        `${formattedAmount}の${item}は自分に残る買い物ではなくても、相手にちゃんと届くなら意味があります。${intro}`
+      ({ item, formattedAmount }) =>
+        `${item}に${formattedAmount}を出したのは、物そのものより気持ちを渡すためです。喜んでもらえたなら、その時点でかなり意味があります。`,
+      ({ item, formattedAmount }) =>
+        `${formattedAmount}の${item}は自分に残る買い物ではなくても、相手にちゃんと届くなら意味があります。`
     ]
   },
   subscription: {
-    label: CATEGORY_LABELS.subscription,
-    suggestion: "サブスク内容が分かるように具体的に入力してください。",
-    intros: [
-      "月額で気分か便利さを安定させるなら、それだけで価値があります。",
-      "毎月少しずつ効くものは、派手ではなくても案外使い勝手がいいです。",
-      "ちゃんと使っているなら、月額の意味は十分あります。"
-    ],
     templates: [
-      ({ item, formattedAmount, intro }) =>
-        `${item}に${formattedAmount}を払ったのは、必要なときにすぐ使える状態を買っているからです。${intro} 続ける価値を感じているなら十分です。`,
-      ({ item, formattedAmount, intro }) =>
-        `${formattedAmount}の${item}は積み上がると見えやすいですが、毎月ちゃんと使うなら無駄とは言えません。${intro}`
+      ({ item, formattedAmount }) =>
+        `${item}に${formattedAmount}を払ったのは、必要なときにすぐ使える状態を買っているからです。続ける価値を感じているなら十分です。`,
+      ({ item, formattedAmount }) =>
+        `${formattedAmount}の${item}は積み上がると見えやすいですが、毎月ちゃんと使うなら無駄とは言えません。`
+    ]
+  },
+  fashionRepair: {
+    templates: [
+      ({ item, formattedAmount }) =>
+        `${item}に${formattedAmount}を払ったのは、気に入った物を買い替えずに使い続けるためです。傷みを直して寿命を延ばせるなら十分意味があります。`,
+      ({ item, formattedAmount }) =>
+        `${formattedAmount}の${item}は新しく買う出費ではなく、今ある物をちゃんと使い続けるためのお金です。`,
+      ({ item, formattedAmount }) =>
+        `${item}に${formattedAmount}を出したのは、まだ使いたい物を手放さずに済ませるためです。納得して使い続けられるなら悪くありません。`
+    ]
+  },
+  genericRepair: {
+    templates: [
+      ({ item, formattedAmount }) =>
+        `${item}に${formattedAmount}を払ったのは、新しく買い直す前に、今ある物を使い続けられる状態へ戻すためです。`,
+      ({ item, formattedAmount }) =>
+        `${formattedAmount}の${item}は軽い話ではなくても、まだ使えるものを活かすための出費だと思えば自然です。`,
+      ({ item, formattedAmount }) =>
+        `${item}に${formattedAmount}を出したのは、壊れたまま我慢するより、今ある物を整えて使うためです。`
     ]
   },
   otherProduct: {
-    label: CATEGORY_LABELS.otherProduct,
-    suggestion: "商品名をもう少し具体的に入力してください。",
-    intros: [
-      "それを欲しいと思った時点で、ある程度は理由になっています。",
-      "生活に支障が出ない範囲なら、すべての買い物に完璧な説明は要りません。",
-      "使い道があるなら、値段だけで全部を切る話でもありません。"
-    ],
     templates: [
-      ({ item, formattedAmount, intro }) =>
-        `${item}に${formattedAmount}を払ったのは、それを欲しいと思った自分の判断を優先したからです。${intro}`,
-      ({ item, formattedAmount, intro }) =>
-        `${formattedAmount}の${item}は理屈を盛りすぎなくても、納得して選んだならそれで十分です。${intro}`
+      ({ item, formattedAmount }) =>
+        `${item}に${formattedAmount}を払ったのは、それを欲しいと思った自分の判断を優先したからです。生活に支障が出ない範囲なら、完璧な理屈は要りません。`,
+      ({ item, formattedAmount }) =>
+        `${formattedAmount}の${item}は理屈を盛りすぎなくても、納得して選んだならそれで十分です。`
     ]
   },
   otherService: {
-    label: CATEGORY_LABELS.otherService,
-    suggestion: "どんなサービスか分かるように、もう少し具体的に入力してください。",
-    intros: [
-      "サービスは物が残らなくても、楽になったなら意味があります。",
-      "自分で抱えなくて済んだ時点で、価値はかなり分かりやすいです。",
-      "使ったあとに少しでも負担が減るなら十分です。"
-    ],
     templates: [
-      ({ item, formattedAmount, intro }) =>
-        `${item}に${formattedAmount}を払ったのは、手間か気疲れを減らすためだと考えれば自然です。${intro} それで少しラクになるなら問題ありません。`,
-      ({ item, formattedAmount, intro }) =>
-        `${formattedAmount}の${item}は物が残らないぶん高く見えても、負担が減るなら意味があります。${intro}`
+      ({ item, formattedAmount }) =>
+        `${item}に${formattedAmount}を払ったのは、手間か気疲れを減らすためだと考えれば自然です。少しでもラクになるなら問題ありません。`,
+      ({ item, formattedAmount }) =>
+        `${formattedAmount}の${item}は物が残らないぶん高く見えても、負担が減るなら意味があります。`
     ]
   }
 };
 
-const INTEGRITY_RULES = [
+const VALIDATION_RULES = [
   {
-    test: (category, text) => category !== "shoes" && /履く|履き/.test(text),
+    test: (context, text) => context.categoryName !== "shoes" && /履く|履き/.test(text),
     reason: "靴以外に履く表現が入っています。"
   },
   {
-    test: (category, text) => category !== "travelStay" && /宿泊/.test(text),
+    test: (context, text) => context.categoryName !== "fashionWear" && /着る|着やす/.test(text),
+    reason: "服以外に着る表現が入っています。"
+  },
+  {
+    test: (context, text) => context.categoryName !== "bag" && /持ち歩く/.test(text),
+    reason: "バッグ以外に持ち歩く表現が入っています。"
+  },
+  {
+    test: (context, text) => !["carMaintenance", "carCustom"].includes(context.categoryName) && /走れる|乗れる|乗るたび|運転|車検|走行|ドライブ/.test(text),
+    reason: "車以外に車専用語が入っています。"
+  },
+  {
+    test: (context, text) => context.repairContext.isRepair && /壊れたからではなく|修理とは別|見た目を変えるためだけ|新しく欲しかったから/.test(text),
+    reason: "修理文脈に購入向けの表現が入っています。"
+  },
+  {
+    test: (context, text) => ["healthService", "beautyService", "medicalCare", "timeSavingService", "transport", "premiumTransit", "travelStay", "event", "otherService", "homeRepair", "fashionRepair", "genericRepair", "carMaintenance"].includes(context.categoryName) && /1年間使う|3年間使う|100回使う|所有する|手元に残る/.test(text),
+    reason: "単発サービスや修理に耐用年数表現が入っています。"
+  },
+  {
+    test: (context, text) => ["shoes", "fashionWear", "bag", "fashionAccessory", "beautyProduct", "healthDevice", "homeDevice", "workTool", "otherProduct", "dailyGoods", "gift"].includes(context.categoryName) && /通い続ける|施術を受ける|診察を受ける|月会費/.test(text),
+    reason: "商品にサービス向けの表現が入っています。"
+  },
+  {
+    test: (context, text) => context.categoryName !== "travelStay" && /宿泊/.test(text),
     reason: "旅行以外に宿泊表現が入っています。"
   },
   {
-    test: (category, text) =>
-      ["food", "dailyGoods", "beautyService", "timeSavingService", "transport", "event", "travelStay", "otherService"].includes(category) &&
-      /100回|1年間|3年間/.test(text),
-    reason: "単発や消耗寄りのものに耐用年数や回数計算が入っています。"
-  },
-  {
-    test: (category, text) =>
-      category !== "carMaintenance" && /故障|修理予防|トラブル防止/.test(text),
-    reason: "整備以外に修理寄りの表現が入っています。"
-  },
-  {
-    test: (category, text) =>
-      category !== "workTool" && /仕事の効率|必要な投資です|生産性が上がるなら、必要な投資/.test(text),
-    reason: "仕事用と断定する表現が混ざっています。"
-  },
-  {
-    test: (category, text) => category !== "beautyProduct" && /毎日の身支度/.test(text),
+    test: (context, text) => context.categoryName !== "beautyProduct" && /毎日の身支度/.test(text),
     reason: "美容用品以外に身支度表現が入っています。"
-  },
-  {
-    test: (category, text) =>
-      category !== "transport" && category !== "premiumTransit" && category !== "travelStay" && /移動で|目的地/.test(text),
-    reason: "移動系以外に交通表現が入っています。"
   }
 ];
 
@@ -660,8 +537,12 @@ function toHalfWidth(value) {
     .replace(/\u3000/g, " ");
 }
 
-function normalizeItemName(value) {
+function normalizeInput(value) {
   return toHalfWidth(value).trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+function detectAmbiguousInput(normalizedItemName) {
+  return AMBIGUOUS_INPUTS[normalizedItemName] || "";
 }
 
 function formatCurrency(value) {
@@ -697,6 +578,202 @@ function getRecentList(key) {
   }
 
   return recentExcusesByKey.get(key);
+}
+
+function detectRepairContext(normalizedItemName) {
+  const isRepair = hasAny(normalizedItemName, WORDS.repair);
+  const hasVehicleWord = hasAny(normalizedItemName, WORDS.vehicle);
+  const hasHomeDeviceWord = hasAny(normalizedItemName, WORDS.homeDevice);
+  const hasFashionRepairWord = hasAny(normalizedItemName, WORDS.fashionRepair);
+
+  let domain = "none";
+
+  if (isRepair && hasVehicleWord) {
+    domain = "vehicle";
+  } else if (isRepair && hasHomeDeviceWord) {
+    domain = "homeDevice";
+  } else if (isRepair && hasFashionRepairWord) {
+    domain = "fashion";
+  } else if (isRepair) {
+    domain = "generic";
+  }
+
+  return {
+    isRepair,
+    domain,
+    digital: hasAny(normalizedItemName, ["スマホ", "iphone", "ipad", "pc", "パソコン", "ノートpc", "macbook", "airpods"])
+  };
+}
+
+function detectItemType(normalizedItemName, repairContext) {
+  if (repairContext.domain === "vehicle") {
+    return { categoryName: "carMaintenance" };
+  }
+
+  if (repairContext.domain === "homeDevice") {
+    return { categoryName: "homeRepair" };
+  }
+
+  if (repairContext.domain === "fashion") {
+    return { categoryName: "fashionRepair" };
+  }
+
+  if (repairContext.domain === "generic") {
+    return { categoryName: "genericRepair" };
+  }
+
+  if (hasAny(normalizedItemName, WORDS.insurance)) {
+    return { categoryName: "insurance" };
+  }
+
+  if (hasAny(normalizedItemName, WORDS.medicalCare)) {
+    return { categoryName: "medicalCare" };
+  }
+
+  if (hasAny(normalizedItemName, WORDS.vehicleMaintenance)) {
+    return { categoryName: "carMaintenance" };
+  }
+
+  if (hasAny(normalizedItemName, WORDS.sponsorship)) {
+    return { categoryName: "sponsorship" };
+  }
+
+  if (hasAny(normalizedItemName, WORDS.premiumTransit)) {
+    return { categoryName: "premiumTransit" };
+  }
+
+  if (hasAny(normalizedItemName, WORDS.transport)) {
+    return { categoryName: "transport" };
+  }
+
+  if (hasAny(normalizedItemName, WORDS.travelStay)) {
+    return { categoryName: "travelStay" };
+  }
+
+  if (hasAny(normalizedItemName, WORDS.event)) {
+    return { categoryName: "event" };
+  }
+
+  if (hasAny(normalizedItemName, WORDS.timeSavingService)) {
+    return { categoryName: "timeSavingService" };
+  }
+
+  if (hasAny(normalizedItemName, WORDS.healthDevice)) {
+    return { categoryName: "healthDevice" };
+  }
+
+  if (hasAny(normalizedItemName, WORDS.healthApp)) {
+    return { categoryName: "healthApp" };
+  }
+
+  if (hasAny(normalizedItemName, WORDS.healthSubscription)) {
+    return { categoryName: "healthSubscription" };
+  }
+
+  if (hasAny(normalizedItemName, WORDS.healthService)) {
+    return { categoryName: "healthService" };
+  }
+
+  if (hasAny(normalizedItemName, WORDS.beautyService)) {
+    return { categoryName: "beautyService" };
+  }
+
+  if (hasAny(normalizedItemName, WORDS.beautyProduct)) {
+    return { categoryName: "beautyProduct" };
+  }
+
+  if (hasAny(normalizedItemName, WORDS.dailyGoods)) {
+    return { categoryName: "dailyGoods" };
+  }
+
+  if (hasAny(normalizedItemName, WORDS.food)) {
+    return { categoryName: "food" };
+  }
+
+  if (hasAny(normalizedItemName, WORDS.gameEntertainment)) {
+    return { categoryName: "gameEntertainment" };
+  }
+
+  if (hasAny(normalizedItemName, WORDS.workTool)) {
+    return { categoryName: "workTool" };
+  }
+
+  if (hasAny(normalizedItemName, WORDS.homeDevice)) {
+    return { categoryName: "homeDevice" };
+  }
+
+  if (hasAny(normalizedItemName, WORDS.carCustom)) {
+    return { categoryName: "carCustom" };
+  }
+
+  if (hasAny(normalizedItemName, WORDS.shoes)) {
+    return { categoryName: "shoes" };
+  }
+
+  if (hasAny(normalizedItemName, WORDS.bag)) {
+    return { categoryName: "bag" };
+  }
+
+  if (hasAny(normalizedItemName, WORDS.fashionAccessory)) {
+    return { categoryName: "fashionAccessory" };
+  }
+
+  if (hasAny(normalizedItemName, WORDS.fashionWear)) {
+    return { categoryName: "fashionWear" };
+  }
+
+  if (hasAny(normalizedItemName, WORDS.gift)) {
+    return { categoryName: "gift" };
+  }
+
+  if (hasAny(normalizedItemName, WORDS.subscription)) {
+    return { categoryName: "subscription" };
+  }
+
+  if (hasAny(normalizedItemName, WORDS.serviceWords) || hasAny(normalizedItemName, WORDS.recurringWords)) {
+    return { categoryName: "otherService" };
+  }
+
+  return { categoryName: "otherProduct" };
+}
+
+function detectCategory(normalizedItemName, repairContext) {
+  return detectItemType(normalizedItemName, repairContext).categoryName;
+}
+
+function buildTemplateData(itemName, amount, repairContext) {
+  return {
+    item: itemName,
+    formattedAmount: formatCurrency(amount),
+    perUse100: calculatePerUse(amount, 100),
+    perDay1Year: calculatePerDay(amount, 365),
+    perDay3Years: calculatePerDay(amount, 365 * 3),
+    repairContext
+  };
+}
+
+function getCompatibleTemplates(categoryName) {
+  const definition = CATEGORY_DEFINITIONS[categoryName];
+  return definition ? definition.templates : [];
+}
+
+function validateGeneratedText(context, text) {
+  return VALIDATION_RULES.every((rule) => !rule.test(context, text));
+}
+
+function buildCandidates(context) {
+  const templates = getCompatibleTemplates(context.categoryName);
+  const data = buildTemplateData(context.itemName, context.amount, context.repairContext);
+  const candidates = [];
+
+  for (const template of templates) {
+    const text = template(data);
+    if (validateGeneratedText(context, text)) {
+      candidates.push(text);
+    }
+  }
+
+  return candidates;
 }
 
 function clearFieldErrors() {
@@ -735,7 +812,7 @@ function validateInputs() {
   clearFieldErrors();
 
   const rawItemName = itemNameInput.value;
-  const normalizedItemName = normalizeItemName(rawItemName);
+  const normalizedItemName = normalizeInput(rawItemName);
   const displayItemName = toHalfWidth(rawItemName).trim().replace(/\s+/g, " ");
   const amountValue = amountInput.value.trim();
   const amount = Number(amountValue);
@@ -756,95 +833,46 @@ function validateInputs() {
 
   return {
     isValid,
-    rawItemName,
     displayItemName,
     normalizedItemName,
     amount
   };
 }
 
-function detectAmbiguity(normalizedItemName) {
-  const directHint = AMBIGUOUS_INPUTS[normalizedItemName];
-
-  if (directHint) {
-    return directHint;
-  }
-
-  return "";
-}
-
-function detectCategory(normalizedItemName) {
-  for (const rule of CATEGORY_RULES) {
-    if (rule.match(normalizedItemName)) {
-      return rule.name;
-    }
-  }
-
-  if (normalizedItemName.endsWith("サービス")) {
-    return "otherService";
-  }
-
-  return "otherProduct";
-}
-
-function buildTemplateData(itemName, amount) {
-  return {
-    item: itemName,
-    formattedAmount: formatCurrency(amount),
-    perUse100: calculatePerUse(amount, 100),
-    perDay1Year: calculatePerDay(amount, 365),
-    perDay3Years: calculatePerDay(amount, 365 * 3)
-  };
-}
-
-function isValidGeneratedText(categoryName, text) {
-  return INTEGRITY_RULES.every((rule) => !rule.test(categoryName, text));
-}
-
-function buildCandidates(categoryName, itemName, amount) {
-  const definition = CATEGORY_DEFINITIONS[categoryName];
-  const data = buildTemplateData(itemName, amount);
-  const candidates = [];
-
-  for (const intro of definition.intros) {
-    for (const template of definition.templates) {
-      const text = template({ ...data, intro });
-
-      if (isValidGeneratedText(categoryName, text)) {
-        candidates.push(text);
-      }
-    }
-  }
-
-  return candidates;
-}
-
 function generateExcuseText(itemName, normalizedItemName, amount) {
-  const ambiguity = detectAmbiguity(normalizedItemName);
-
-  if (ambiguity) {
+  const ambiguousHint = detectAmbiguousInput(normalizedItemName);
+  if (ambiguousHint) {
     return {
       ok: false,
-      message: `この商品・サービスに合う自然な言い訳を作れませんでした。${ambiguity}`
+      message: `この商品・サービスに合う自然な言い訳を作れませんでした。${ambiguousHint}`
     };
   }
 
-  const categoryName = detectCategory(normalizedItemName);
-  const definition = CATEGORY_DEFINITIONS[categoryName];
+  const repairContext = detectRepairContext(normalizedItemName);
+  const categoryName = detectCategory(normalizedItemName, repairContext);
+  const meta = CATEGORY_META[categoryName];
 
-  if (!definition) {
+  if (!meta) {
     return {
       ok: false,
       message: "この商品・サービスに合う自然な言い訳を作れませんでした。商品名をもう少し具体的に入力してください。"
     };
   }
 
-  const candidates = buildCandidates(categoryName, itemName, amount);
+  const context = {
+    itemName,
+    normalizedItemName,
+    amount,
+    categoryName,
+    repairContext,
+    meta
+  };
 
+  const candidates = buildCandidates(context);
   if (candidates.length === 0) {
     return {
       ok: false,
-      message: `この商品・サービスに合う自然な言い訳を作れませんでした。${definition.suggestion}`
+      message: `この商品・サービスに合う自然な言い訳を作れませんでした。${meta.suggestion}`
     };
   }
 
@@ -862,7 +890,7 @@ function generateExcuseText(itemName, normalizedItemName, amount) {
   return {
     ok: true,
     categoryName,
-    categoryLabel: definition.label,
+    categoryLabel: CATEGORY_LABELS[categoryName],
     excuse
   };
 }
@@ -871,14 +899,12 @@ function generateExcuse() {
   clearGenerationError();
 
   const { isValid, displayItemName, normalizedItemName, amount } = validateInputs();
-
   if (!isValid) {
     clearResult();
     return;
   }
 
   const result = generateExcuseText(displayItemName, normalizedItemName, amount);
-
   if (!result.ok) {
     showGenerationError(result.message);
     return;
@@ -926,7 +952,6 @@ itemNameInput.addEventListener("input", () => {
   if (itemError.textContent) {
     itemError.textContent = "";
   }
-
   if (!generationError.classList.contains("hidden")) {
     clearGenerationError();
   }
@@ -939,7 +964,12 @@ amountInput.addEventListener("input", () => {
 });
 
 window.__shoppingExcuseDebug = {
+  normalizeInput,
+  detectAmbiguousInput,
+  detectItemType,
   detectCategory,
+  detectRepairContext,
+  getCompatibleTemplates,
   generateExcuseText,
-  normalizeItemName
+  validateGeneratedText
 };
