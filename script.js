@@ -33,6 +33,7 @@ const CATEGORY_LABELS = {
   healthApp: "健康用品・機器",
   healthService: "健康・美容サービス",
   healthSubscription: "健康・運動",
+  gameMicrotransaction: "ゲーム・娯楽",
   medicalCare: "医療・身体のメンテナンス",
   insurance: "保険・備え",
   homeDevice: "家電・デジタル機器",
@@ -61,10 +62,16 @@ const AMBIGUOUS_INPUTS = {
 };
 
 const WORDS = {
-  repair: ["修理", "整備", "点検", "交換", "オーバーホール", "oh", "メンテナンス", "調整", "補修", "リペア", "再塗装"],
+  repair: ["修理", "整備", "点検", "オーバーホール", "oh", "メンテナンス", "調整", "補修", "リペア", "再塗装"],
+  repairLikeExchange: ["タイヤ交換", "オイル交換", "バッテリー交換", "ブレーキパッド交換", "部品交換", "液晶交換", "画面交換", "電池交換", "ベルト交換", "フィルター交換", "ホース交換", "モーター交換"],
+  excludedVehicle: ["自転車", "電動自転車", "車椅子", "台車", "電車", "列車", "汽車", "歯車", "水車", "風車"],
   vehicle: [
-    "車",
     "自動車",
+    "乗用車",
+    "愛車",
+    "マイカー",
+    "車の",
+    "車両",
     "バイク",
     "オートバイ",
     "エンジン",
@@ -91,6 +98,7 @@ const WORDS = {
   homeDevice: [
     "洗濯機",
     "スマホ",
+    "スマートウォッチ",
     "iphone",
     "ipad",
     "pc",
@@ -106,33 +114,47 @@ const WORDS = {
     "電子レンジ",
     "モニター",
     "ディスプレイ",
-    "タブレット"
+    "タブレット",
+    "置き時計",
+    "壁掛け時計",
+    "掛け時計",
+    "目覚まし時計",
+    "デジタル時計",
+    "ドライヤー",
+    "ヘアアイロン",
+    "電動シェーバー",
+    "美顔器",
+    "化粧鏡"
   ],
-  fashionRepair: ["靴", "スニーカー", "ブーツ", "バッグ", "かばん", "鞄", "コート", "帽子", "腕時計", "時計", "服"],
+  fashionRepair: ["靴", "スニーカー", "ブーツ", "バッグ", "かばん", "鞄", "コート", "帽子", "腕時計", "服"],
   serviceWords: ["サービス", "代行", "レッスン", "相談", "施術", "診察", "検査"],
-  recurringWords: ["月額", "月会費", "月謝", "メンバーシップ", "会費", "サブスク", "定期便", "オンラインフィットネス"],
+  recurringWords: ["月額", "月会費", "月謝", "メンバーシップ", "会費", "サブスク", "定期便", "オンラインフィットネス", "毎月", "月額プラン", "月額料金"],
+  annualWords: ["年会費", "年額", "年間プラン", "1年契約", "年間ジム会費"],
   premiumTransit: ["グリーン車", "プレミアムシート", "ファーストクラス", "ビジネスクラス"],
   transport: ["タクシー", "駐車場代", "駐車料金", "駐車場", "ガソリン", "高速代", "交通費", "電車代", "バス代", "新幹線"],
   travelStay: ["旅行", "ホテル宿泊", "ホテル", "旅館", "宿泊", "温泉宿", "航空券", "ツアー"],
   event: ["映画チケット", "ライブチケット", "映画館", "美術館", "展覧会", "入場料", "観劇", "フェス", "コンサート", "舞台"],
-  food: ["海鮮丼", "焼肉", "寿司", "ラーメン", "カフェ", "ランチ", "ディナー", "ごはん", "弁当", "丼", "定食", "うなぎ", "食事"],
-  dailyGoods: ["ハンドソープ", "ボディソープ", "洗剤", "ティッシュ", "トイレットペーパー", "スポンジ"],
+  hotelFood: ["ホテルランチ", "ホテルビュッフェ", "ホテルディナー", "ホテルのアフタヌーンティー", "ホテル朝食", "ホテルバイキング"],
+  food: ["海鮮丼", "焼肉", "寿司", "ラーメン", "カフェ", "ランチ", "ディナー", "ごはん", "弁当", "丼", "定食", "うなぎ", "食事", "ビュッフェ", "バイキング", "朝食", "アフタヌーンティー", "コース料理", "レストラン", "飲食", "薬膳料理"],
+  dailyGoods: ["ハンドソープ", "ボディソープ", "洗剤", "ティッシュ", "トイレットペーパー", "スポンジ", "シャンプー", "コンディショナー", "石鹸", "歯磨き粉", "薬用石鹸", "薬用歯磨き粉"],
   timeSavingService: ["家事代行", "清掃代行", "洗濯代行", "宿題代行", "代行サービス"],
-  beautyProduct: ["ヘアオイル", "美容液", "化粧水", "乳液", "コスメ", "日焼け止め", "スキンケア", "香水", "ヘアミルク"],
+  beautyProduct: ["ヘアオイル", "美容液", "化粧水", "乳液", "コスメ", "日焼け止め", "スキンケア", "香水", "ヘアミルク", "薬用シャンプー", "薬用化粧品", "洗顔料"],
   beautyService: ["美容院", "ヘアサロン", "散髪", "カット", "カラー", "ネイル", "まつげ", "脱毛"],
   healthDevice: ["マッサージチェア", "体重計", "ヘルスメーター", "血圧計", "トレーニング器具", "ダンベル", "ヨガマット"],
-  healthApp: ["ヘルスケアアプリ", "服薬管理アプリ", "ヘルスケア", "服薬管理", "健康管理アプリ"],
+  healthApp: ["ヘルスケアアプリ", "服薬管理アプリ", "お薬手帳アプリ", "健康管理アプリ", "体調管理アプリ", "睡眠管理アプリ", "歩数計アプリ", "ヘルスケア", "服薬管理"],
   healthService: ["整体", "マッサージ", "もみほぐし", "オイルマッサージ", "鍼灸"],
   healthSubscription: ["ジム月会費", "ジムメンバーシップ", "ジム", "パーソナルジム", "オンラインフィットネス", "ヨガ教室", "パーソナルトレーニング"],
   vehicleMaintenance: ["車検", "エンジンオイル交換", "エンジンオイル", "ミッションオイル", "オイル交換", "タイヤ交換", "ブレーキ点検"],
-  medicalCare: ["医療費", "病院代", "診察代", "健康診断", "人間ドック", "歯医者", "歯科", "治療費", "薬代", "病院", "診察", "検査", "薬"],
+  excludedMedical: ["薬用シャンプー", "薬用石鹸", "薬用歯磨き粉", "農薬", "薬膳", "火薬", "薬味", "薬用化粧品", "漢方風入浴剤"],
+  medicalCare: ["医療費", "病院代", "診察代", "健康診断", "人間ドック", "歯医者", "歯科", "治療費", "薬代", "病院", "診察", "検査", "処方薬", "市販薬", "医薬品", "病院の薬", "薬局で購入", "風邪薬", "頭痛薬", "胃薬", "目薬", "湿布", "抗生物質", "処方箋"],
   insurance: ["自動車保険", "医療保険", "火災保険", "生命保険", "損害保険", "任意保険", "保険料"],
-  gameEntertainment: ["pcゲーム", "スマホゲーム", "ゲーム課金", "課金", "steam", "switch", "playstation", "xbox", "ゲーム", "漫画", "フィギュア", "アニメ", "プラモ", "小説"],
+  gameEntertainment: ["pcゲーム", "switchソフト", "ps5ゲーム", "ゲームソフト", "ダウンロード版ゲーム", "steam", "switch", "playstation", "xbox", "漫画", "フィギュア", "アニメ", "プラモ", "小説"],
+  gameMicrotransaction: ["スマホゲーム課金", "ガチャ課金", "ゲーム内アイテム", "スキン購入", "シーズンパス", "バトルパス", "課金"],
   sponsorship: ["スポンサー枠", "スポンサー", "支援", "投げ銭", "スパチャ", "fanbox", "patreon", "寄付"],
   workTool: ["仕事用ノートpc", "仕事用pc", "仕事用スマホ", "仕事用iphone", "業務用パソコン", "工具", "作業用工具"],
   shoes: ["スニーカー", "靴", "ブーツ", "ローファー", "パンプス", "サンダル"],
   bag: ["バッグ", "かばん", "鞄", "リュック", "トート", "ショルダー"],
-  fashionAccessory: ["帽子", "腕時計", "時計", "アクセサリー", "ネックレス", "リング", "ピアス"],
+  fashionAccessory: ["帽子", "腕時計", "アクセサリー", "ネックレス", "リング", "ピアス", "ウォッチバンド"],
   fashionWear: ["コート", "シャツ", "デニム", "パンツ", "ジャケット", "洋服", "服"],
   gift: ["プレゼント", "ギフト", "贈り物"],
   subscription: ["netflix", "spotify", "youtube premium"]
@@ -155,6 +177,7 @@ const CATEGORY_META = {
   healthApp: { kind: "product", serviceMode: "durable", suggestion: "アプリ名が分かるように「ヘルスケアアプリ」など具体的に入力してください。" },
   healthService: { kind: "service", serviceMode: "single", suggestion: "サービス内容が分かるように「整体」や「健康診断」のように入力してください。" },
   healthSubscription: { kind: "service", serviceMode: "recurring", suggestion: "継続サービス名が分かるように「ジム月会費」など具体的に入力してください。" },
+  gameMicrotransaction: { kind: "service", serviceMode: "entertainment", suggestion: "課金内容が分かるように「ガチャ課金」など具体的に入力してください。" },
   medicalCare: { kind: "service", serviceMode: "single", suggestion: "医療内容が分かるように具体的に入力してください。" },
   insurance: { kind: "service", serviceMode: "recurring", suggestion: "保険の種類が分かるように具体的に入力してください。" },
   homeDevice: { kind: "product", serviceMode: "durable", suggestion: "機器名が分かるように具体的に入力してください。" },
@@ -276,12 +299,12 @@ const CATEGORY_DEFINITIONS = {
   },
   beautyProduct: {
     templates: [
-      ({ item, perDay1Year }) =>
-        `${item}を1年間使う前提なら1日あたり約${perDay1Year}です。毎日の身支度が少しラクになるなら、十分ありです。`,
       ({ item, formattedAmount }) =>
         `${item}に${formattedAmount}を出したのは、贅沢というより自分を整えるためです。使うたびに気分が整うなら悪くありません。`,
       ({ item, formattedAmount }) =>
-        `${formattedAmount}の${item}は派手に見えても、日常の満足度を上げるなら意味があります。`
+        `${formattedAmount}の${item}は派手に見えても、日常の満足度を上げるなら意味があります。`,
+      ({ item, formattedAmount }) =>
+        `${item}に${formattedAmount}を払ったのは、毎日の身支度を少し整えやすくするためです。使い切る物でも、日常的に役立つなら無駄とは限りません。`
     ]
   },
   beautyService: {
@@ -330,8 +353,8 @@ const CATEGORY_DEFINITIONS = {
         `${item}に${formattedAmount}を払ったのは、運動やケアを続ける環境を確保するためです。月額で機会を作って習慣化しやすくなるなら、かなり意味があります。`,
       ({ item, formattedAmount }) =>
         `${formattedAmount}の${item}は単発ではなく、続ける前提の出費です。サボりにくい環境を買っていると思えば自然です。`,
-      ({ item, perDay1Year }) =>
-        `${item}を1年間続ける前提なら1日あたり約${perDay1Year}です。そのくらいで運動の機会を作れるなら、案外安い方です。`
+      ({ item, periodLabel, unitCost }) =>
+        `${periodLabel}${unitCost}です。運動を続ける環境を確保する費用として考えれば、毎日の負担はそこまで大きくありません。`
     ]
   },
   medicalCare: {
@@ -394,6 +417,16 @@ const CATEGORY_DEFINITIONS = {
         `${formattedAmount}の${item}は趣味の出費ですが、好きなものがある方が日々は回しやすいです。それなら、無駄と切るほどではありません。`
     ]
   },
+  gameMicrotransaction: {
+    templates: [
+      ({ item, formattedAmount }) =>
+        `${item}に${formattedAmount}を出したのは、その瞬間を楽しむための趣味の予算だと思えば自然です。生活に支障が出ない範囲なら、それで十分です。`,
+      ({ item, formattedAmount }) =>
+        `${formattedAmount}の${item}は形に残る買い物ではなくても、ちゃんと楽しめたなら意味があります。`,
+      ({ item, formattedAmount }) =>
+        `${item}に${formattedAmount}を払ったのは、長く残すためではなく今を楽しむためです。趣味として納得しているなら悪くありません。`
+    ]
+  },
   event: {
     templates: [
       ({ item, formattedAmount }) =>
@@ -447,7 +480,11 @@ const CATEGORY_DEFINITIONS = {
       ({ item, formattedAmount }) =>
         `${item}に${formattedAmount}を払ったのは、必要なときにすぐ使える状態を買っているからです。続ける価値を感じているなら十分です。`,
       ({ item, formattedAmount }) =>
-        `${formattedAmount}の${item}は積み上がると見えやすいですが、毎月ちゃんと使うなら無駄とは言えません。`
+        `${formattedAmount}の${item}は積み上がると見えやすいですが、毎月ちゃんと使うなら無駄とは言えません。`,
+      ({ periodLabel, unitCost }) =>
+        periodLabel && unitCost
+          ? `${periodLabel}${unitCost}です。続ける前提の費用として見れば、日ごとの負担はそこまで大きくありません。`
+          : ""
     ]
   },
   fashionRepair: {
@@ -506,12 +543,32 @@ const VALIDATION_RULES = [
     reason: "車以外に車専用語が入っています。"
   },
   {
+    test: (context, text) => context.specificException === "nonVehicle" && /エンジン|愛車/.test(text),
+    reason: "非車両に車専用語が入っています。"
+  },
+  {
     test: (context, text) => context.repairContext.isRepair && /壊れたからではなく|修理とは別|見た目を変えるためだけ|新しく欲しかったから/.test(text),
     reason: "修理文脈に購入向けの表現が入っています。"
   },
   {
+    test: (context, text) => !context.repairContext.isRepair && /壊れた物|修理して|故障|直して使う|買い替えを避ける/.test(text),
+    reason: "修理ではない入力に修理表現が入っています。"
+  },
+  {
     test: (context, text) => ["healthService", "beautyService", "medicalCare", "timeSavingService", "transport", "premiumTransit", "travelStay", "event", "otherService", "homeRepair", "fashionRepair", "genericRepair", "carMaintenance"].includes(context.categoryName) && /1年間使う|3年間使う|100回使う|所有する|手元に残る/.test(text),
     reason: "単発サービスや修理に耐用年数表現が入っています。"
+  },
+  {
+    test: (context, text) => context.billingPeriod === "monthly" && /1日あたり約22円|1日あたり約8円|1日あたり約27円/.test(text),
+    reason: "月額料金に年額の日割りが混ざっています。"
+  },
+  {
+    test: (context, text) => context.consumableType === "consumable" && /1年間使う|3年間使う|100回使う|耐用年数|1日あたり/.test(text),
+    reason: "消耗品に長期使用計算が入っています。"
+  },
+  {
+    test: (context, text) => context.categoryName === "gameMicrotransaction" && /100回触る|1回あたり|長期間使う|手元に残る|資産/.test(text),
+    reason: "ゲーム内課金に回数換算や資産表現が入っています。"
   },
   {
     test: (context, text) => ["shoes", "fashionWear", "bag", "fashionAccessory", "beautyProduct", "healthDevice", "homeDevice", "workTool", "otherProduct", "dailyGoods", "gift"].includes(context.categoryName) && /通い続ける|施術を受ける|診察を受ける|月会費/.test(text),
@@ -545,6 +602,78 @@ function detectAmbiguousInput(normalizedItemName) {
   return AMBIGUOUS_INPUTS[normalizedItemName] || "";
 }
 
+function detectSpecificExceptions(normalizedItemName) {
+  if (hasAny(normalizedItemName, WORDS.excludedVehicle)) {
+    return "nonVehicle";
+  }
+
+  if (hasAny(normalizedItemName, WORDS.excludedMedical)) {
+    return "nonMedical";
+  }
+
+  if (hasAny(normalizedItemName, WORDS.hotelFood)) {
+    return "hotelFood";
+  }
+
+  if (hasAny(normalizedItemName, WORDS.gameMicrotransaction)) {
+    return "gameMicrotransaction";
+  }
+
+  if (hasAny(normalizedItemName, WORDS.healthApp)) {
+    return "healthApp";
+  }
+
+  if (normalizedItemName.includes("機種交換")) {
+    return "deviceReplacement";
+  }
+
+  return "";
+}
+
+function detectActionType(normalizedItemName) {
+  if (hasAny(normalizedItemName, WORDS.repair)) {
+    return "repair";
+  }
+
+  if (hasAny(normalizedItemName, WORDS.repairLikeExchange)) {
+    return "repair";
+  }
+
+  if (normalizedItemName.includes("交換")) {
+    return "exchange";
+  }
+
+  if (hasAny(normalizedItemName, ["購入", "取付"])) {
+    return "purchase";
+  }
+
+  return "generic";
+}
+
+function detectBillingPeriod(normalizedItemName) {
+  if (hasAny(normalizedItemName, WORDS.annualWords)) {
+    return "yearly";
+  }
+
+  if (hasAny(normalizedItemName, WORDS.recurringWords)) {
+    return "monthly";
+  }
+
+  return "single";
+}
+
+function detectConsumableType(normalizedItemName, categoryName) {
+  if (["beautyProduct", "dailyGoods"].includes(categoryName)) {
+    return "consumable";
+  }
+
+  if (["homeDevice", "healthDevice", "shoes", "fashionWear", "bag", "fashionAccessory", "workTool"].includes(categoryName)) {
+    return "durable";
+  }
+
+  return "other";
+}
+
 function formatCurrency(value) {
   return `${Number(value).toLocaleString("ja-JP")}円`;
 }
@@ -555,6 +684,18 @@ function calculatePerUse(amount, count) {
 
 function calculatePerDay(amount, days) {
   return formatCurrency(Math.round(amount / days));
+}
+
+function calculateUnitCost(amount, billingPeriod) {
+  if (billingPeriod === "monthly") {
+    return formatCurrency(Math.round(amount / 30));
+  }
+
+  if (billingPeriod === "yearly") {
+    return formatCurrency(Math.round(amount / 365));
+  }
+
+  return "";
 }
 
 function pickRandom(array) {
@@ -580,9 +721,9 @@ function getRecentList(key) {
   return recentExcusesByKey.get(key);
 }
 
-function detectRepairContext(normalizedItemName) {
-  const isRepair = hasAny(normalizedItemName, WORDS.repair);
-  const hasVehicleWord = hasAny(normalizedItemName, WORDS.vehicle);
+function detectRepairContext(normalizedItemName, specificException, actionType) {
+  const isRepair = actionType === "repair";
+  const hasVehicleWord = specificException !== "nonVehicle" && hasAny(normalizedItemName, WORDS.vehicle);
   const hasHomeDeviceWord = hasAny(normalizedItemName, WORDS.homeDevice);
   const hasFashionRepairWord = hasAny(normalizedItemName, WORDS.fashionRepair);
 
@@ -605,7 +746,23 @@ function detectRepairContext(normalizedItemName) {
   };
 }
 
-function detectItemType(normalizedItemName, repairContext) {
+function detectItemType(normalizedItemName, repairContext, specificException) {
+  if (specificException === "hotelFood") {
+    return { categoryName: "food" };
+  }
+
+  if (specificException === "gameMicrotransaction") {
+    return { categoryName: "gameMicrotransaction" };
+  }
+
+  if (specificException === "healthApp") {
+    return { categoryName: "healthApp" };
+  }
+
+  if (specificException === "deviceReplacement") {
+    return { categoryName: "homeDevice" };
+  }
+
   if (repairContext.domain === "vehicle") {
     return { categoryName: "carMaintenance" };
   }
@@ -626,7 +783,7 @@ function detectItemType(normalizedItemName, repairContext) {
     return { categoryName: "insurance" };
   }
 
-  if (hasAny(normalizedItemName, WORDS.medicalCare)) {
+  if (specificException !== "nonMedical" && hasAny(normalizedItemName, WORDS.medicalCare)) {
     return { categoryName: "medicalCare" };
   }
 
@@ -662,12 +819,12 @@ function detectItemType(normalizedItemName, repairContext) {
     return { categoryName: "healthDevice" };
   }
 
-  if (hasAny(normalizedItemName, WORDS.healthApp)) {
-    return { categoryName: "healthApp" };
-  }
-
   if (hasAny(normalizedItemName, WORDS.healthSubscription)) {
     return { categoryName: "healthSubscription" };
+  }
+
+  if (hasAny(normalizedItemName, WORDS.annualWords)) {
+    return { categoryName: "subscription" };
   }
 
   if (hasAny(normalizedItemName, WORDS.healthService)) {
@@ -737,18 +894,30 @@ function detectItemType(normalizedItemName, repairContext) {
   return { categoryName: "otherProduct" };
 }
 
-function detectCategory(normalizedItemName, repairContext) {
-  return detectItemType(normalizedItemName, repairContext).categoryName;
+function detectCategory(normalizedItemName, repairContext, specificException) {
+  return detectItemType(normalizedItemName, repairContext, specificException).categoryName;
 }
 
-function buildTemplateData(itemName, amount, repairContext) {
+function buildTemplateData(itemName, amount, context) {
+  const unitCost = calculateUnitCost(amount, context.billingPeriod);
+  const periodLabel =
+    context.billingPeriod === "monthly"
+      ? `月額${formatCurrency(amount)}なら、1日あたり約`
+      : context.billingPeriod === "yearly"
+        ? `年額${formatCurrency(amount)}なら、1日あたり約`
+        : "";
+
   return {
     item: itemName,
     formattedAmount: formatCurrency(amount),
     perUse100: calculatePerUse(amount, 100),
     perDay1Year: calculatePerDay(amount, 365),
     perDay3Years: calculatePerDay(amount, 365 * 3),
-    repairContext
+    repairContext: context.repairContext,
+    billingPeriod: context.billingPeriod,
+    consumableType: context.consumableType,
+    periodLabel,
+    unitCost
   };
 }
 
@@ -763,12 +932,12 @@ function validateGeneratedText(context, text) {
 
 function buildCandidates(context) {
   const templates = getCompatibleTemplates(context.categoryName);
-  const data = buildTemplateData(context.itemName, context.amount, context.repairContext);
+  const data = buildTemplateData(context.itemName, context.amount, context);
   const candidates = [];
 
   for (const template of templates) {
     const text = template(data);
-    if (validateGeneratedText(context, text)) {
+    if (text && validateGeneratedText(context, text)) {
       candidates.push(text);
     }
   }
@@ -848,8 +1017,10 @@ function generateExcuseText(itemName, normalizedItemName, amount) {
     };
   }
 
-  const repairContext = detectRepairContext(normalizedItemName);
-  const categoryName = detectCategory(normalizedItemName, repairContext);
+  const specificException = detectSpecificExceptions(normalizedItemName);
+  const actionType = detectActionType(normalizedItemName);
+  const repairContext = detectRepairContext(normalizedItemName, specificException, actionType);
+  const categoryName = detectCategory(normalizedItemName, repairContext, specificException);
   const meta = CATEGORY_META[categoryName];
 
   if (!meta) {
@@ -864,7 +1035,11 @@ function generateExcuseText(itemName, normalizedItemName, amount) {
     normalizedItemName,
     amount,
     categoryName,
+    specificException,
+    actionType,
     repairContext,
+    billingPeriod: detectBillingPeriod(normalizedItemName),
+    consumableType: detectConsumableType(normalizedItemName, categoryName),
     meta
   };
 
@@ -966,10 +1141,15 @@ amountInput.addEventListener("input", () => {
 window.__shoppingExcuseDebug = {
   normalizeInput,
   detectAmbiguousInput,
+  detectSpecificExceptions,
   detectItemType,
   detectCategory,
   detectRepairContext,
+  detectActionType,
+  detectBillingPeriod,
+  detectConsumableType,
   getCompatibleTemplates,
+  buildCandidates,
   generateExcuseText,
   validateGeneratedText
 };
