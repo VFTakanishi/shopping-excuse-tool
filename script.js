@@ -28,7 +28,7 @@ let copyTimerId = null;
 let isGenerating = false;
 let currentExcuseState = null;
 
-const WORKER_ENDPOINT = "https://REPLACE_WITH_YOUR_WORKER_URL";
+const WORKER_ENDPOINT = "https://nameless-forest-d144shopping-excuse-tool-worker.innobd11.workers.dev/";
 const WORKER_TIMEOUT_MS = 9000;
 const AI_CACHE_VERSION = "human-v1";
 
