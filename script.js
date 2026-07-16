@@ -1,4 +1,4 @@
-const APP_VERSION = "2026.07.16-hybrid-2";
+const APP_VERSION = "2026.07.16-hybrid-3";
 
 const form = document.getElementById("excuse-form");
 const generateButton = document.getElementById("generate-button");
@@ -1645,6 +1645,73 @@ function buildLocalCandidates(context) {
     .map((detail) => detail.text);
 }
 
+function inferFallbackTheme(context) {
+  const name = context.normalizedItemName;
+
+  if (/(エアコン|クーラー|暖房|冷房|空気清浄機|除湿機)/u.test(name)) {
+    return "climate";
+  }
+
+  if (/(椅子|デスク|机|モニター|キーボード|マウス|pc|パソコン|スマホ)/u.test(name)) {
+    return "work";
+  }
+
+  if (/(ベッド|布団|枕|ソファ|家具|家電)/u.test(name)) {
+    return "home";
+  }
+
+  if (/(旅行|ホテル|旅館|チケット|ライブ|映画)/u.test(name)) {
+    return "experience";
+  }
+
+  if (/(スパチャ|投げ銭|スポンサー|支援)/u.test(name)) {
+    return "support";
+  }
+
+  return "general";
+}
+
+function buildWorkerFallbackCandidates(context) {
+  const perDay = formatPerDay(context.amount, 365);
+  const perUse = formatPerUnit(context.amount, 100);
+  const theme = inferFallbackTheme(context);
+
+  const templatesByTheme = {
+    climate: [
+      `${context.itemName}に${context.formattedAmount}円は大きく見えても、暑さや寒さを毎日受け続ける方が地味にきついです。1年間使う前提なら1日あたり${perDay}円なので、部屋の快適さを買う話としては通せます。`,
+      `${context.formattedAmount}円の${context.itemName}は勢いに見えても、家でしんどい時間を減らせるなら話は別です。使う日が続くものなら、我慢代を先に払わなくて済む分だけまだ納得しやすいです。`,
+      `${context.itemName}は高く見えても、毎日使うなら一回ごとの不快を少しずつ減らす道具です。100回使うと仮定すれば1回あたり${perUse}円なので、完全に無茶な出費とまでは言いにくいです。`
+    ],
+    work: [
+      `${context.itemName}に${context.formattedAmount}円は軽くないですが、使うたびに手間や疲れが減るなら回収しやすい出費です。100回使うと仮定すれば1回あたり${perUse}円なので、仕事道具としてはまだ説明がつきます。`,
+      `${context.formattedAmount}円の${context.itemName}は安くはなくても、毎回の作業で引っかかる時間を減らせるなら十分元を取りにいけます。使う回数が多い前提なら、気分転換より効率の話にできます。`,
+      `${context.itemName}は一度に払う額だけ見ると強いですが、作業のしんどさをまとめて下げるなら必要経費寄りです。1年間使う前提なら1日あたり${perDay}円なので、無理筋ではありません。`
+    ],
+    home: [
+      `${context.itemName}に${context.formattedAmount}円は大きく見えても、家で毎日触るものなら満足度がそのまま積み上がります。1年間使う前提なら1日あたり${perDay}円なので、生活を少し楽にする費用としては通ります。`,
+      `${context.formattedAmount}円の${context.itemName}は安くはないですが、使うたびに地味なストレスを減らせるなら悪くない出費です。毎日使うものを後回しにする方が、あとでじわじわ効いてきます。`,
+      `${context.itemName}はぜいたく品っぽく見えても、家の快適さを上げるものは出番が多いです。100回使うと仮定すれば1回あたり${perUse}円なので、雑に散財した話とは少し違います。`
+    ],
+    experience: [
+      `${context.itemName}に${context.formattedAmount}円は安くないですが、ただの物よりその日で終わる満足に払ったと考えると筋は通ります。中途半端に何回も使うより、一回でちゃんと使った方がまだ話が早いです。`,
+      `${context.formattedAmount}円の${context.itemName}は一瞬で消える出費に見えても、目的がはっきりしているぶんなんでもない浪費より説明しやすいです。予定として使い切るなら、少なくとも雑な出費ではありません。`,
+      `${context.itemName}は高く見えても、その場の体験や移動をまとめて買うものです。後から細かく散らすより一回で使い道が決まっているなら、まだ納得の形にしやすいです。`
+    ],
+    support: [
+      `${context.itemName}に${context.formattedAmount}円は軽くないですが、物ではなく応援に使うと最初から決めていたなら整理はできます。少額を何度も重ねるより、一回で予算を切ったと考えればまだ説明はつきます。`,
+      `${context.formattedAmount}円の${context.itemName}は残る物がないぶん強く見えても、用途がはっきり応援費なら雑な買い物とは別です。予算の中でここに回したなら、ただの衝動とまでは言い切れません。`,
+      `${context.itemName}は高く見えても、最初から娯楽費ではなく支援費として切っているなら話は変わります。使い道がぶれていない分、散らした出費よりは説明しやすいです。`
+    ],
+    general: [
+      `${context.itemName}に${context.formattedAmount}円は安くないですが、使い道があるならそれだけで雑な出費とは違います。100回使うと仮定すれば1回あたり${perUse}円なので、回数が出るものなら十分説明できます。`,
+      `${context.formattedAmount}円の${context.itemName}は一度に見ると重くても、1年間使う前提なら1日あたり${perDay}円です。出番があるなら、その金額で毎回の小さな不満を減らす話として通せます。`,
+      `${context.itemName}は高く見えても、ちゃんと使う前提なら単価はだんだん下がります。必要になるたびに別の手段でごまかすより、一回で整えた方が結果的にラクなこともあります。`
+    ]
+  };
+
+  return templatesByTheme[theme] || templatesByTheme.general;
+}
+
 function clearFieldErrors() {
   itemError.textContent = "";
   amountError.textContent = "";
@@ -2062,6 +2129,26 @@ async function generateExcuse() {
     lastExcuse = nextText;
     showResult(nextText, aiState.metaText);
   } catch (error) {
+    const fallbackCandidates = buildWorkerFallbackCandidates(context).filter((text) =>
+      validateGeneratedText(context, text)
+    );
+
+    if (fallbackCandidates.length > 0) {
+      const fallbackState = buildExcuseState(
+        buildAiSessionKey(context),
+        fallbackCandidates,
+        "接続が不安定だったため、この場で組み立てた言い訳を表示しています。",
+        "fallback"
+      );
+
+      sessionExcuseCache.set(fallbackState.sessionKey, fallbackState);
+      currentExcuseState = fallbackState;
+      const nextText = getNextExcuseFromState(fallbackState);
+      lastExcuse = nextText;
+      showResult(nextText, fallbackState.metaText);
+      return;
+    }
+
     showGenerationError(mapWorkerErrorToMessage(error.message));
   } finally {
     setBusyState(false);
