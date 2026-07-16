@@ -87,7 +87,7 @@ book: {
   ],
   high: [
     ({ item, formattedAmount }) =>
-      `${formattedAmount}の${item}は高めですが、何度か開くならまだ話せます。`
+      `${formattedAmount}の${item}なら、何度か開けば十分元を取りにいけます。`
   ],
   extreme: [
     ({ item, formattedAmount }) =>

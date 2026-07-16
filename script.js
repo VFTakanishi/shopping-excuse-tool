@@ -1,4 +1,4 @@
-const APP_VERSION = "2026.07.16-short-1";
+const APP_VERSION = "2026.07.16-human-2";
 
 const form = document.getElementById("excuse-form");
 const itemNameInput = document.getElementById("item-name");
@@ -36,6 +36,25 @@ const BANNED_EMPTY_JUSTIFICATIONS = [
   "理屈を盛りすぎなくてよい",
   "自分の判断を優先した",
   "それで十分です"
+];
+
+const BANNED_AI_PHRASES = [
+  "話せます",
+  "説明できます",
+  "整理できます",
+  "筋は通ります",
+  "回収先",
+  "の顔です",
+  "の帯です",
+  "一回で納得したい側",
+  "時間ごと切っています",
+  "比率が高い",
+  "まだ自然です",
+  "まだ通ります",
+  "説明可能",
+  "納得しやすいです",
+  "意味があります",
+  "考えられます"
 ];
 
 const GENERIC_NAME_MESSAGES = new Map([
@@ -99,6 +118,8 @@ const SUBTYPE_RULES = [
   { subtype: "hotelLunch", category: "food", keywords: ["ホテルランチ"] },
   { subtype: "mobileGameCharge", category: "entertainment", keywords: ["スマホゲーム課金", "ゲーム課金", "ガチャ課金"] },
   { subtype: "pcGame", category: "entertainment", keywords: ["pcゲーム", "steam", "switchソフト", "ps5ゲーム", "ゲームソフト"] },
+  { subtype: "headphone", category: "device", keywords: ["ヘッドホン"] },
+  { subtype: "earphone", category: "device", keywords: ["ワイヤレスイヤホン", "有線イヤホン", "イヤホン"] },
   { subtype: "spacha", category: "creatorSupport", keywords: ["スーパーチャット", "super chat", "スパチャ", "投げ銭", "youtube投げ銭", "配信者支援"] },
   { subtype: "sponsorFrame", category: "creatorSupport", keywords: ["スポンサー枠", "スポンサー費", "協賛"] },
   { subtype: "greenCar", category: "premiumTransit", keywords: ["グリーン車", "新幹線グリーン車", "プレミアムシート", "ファーストクラス", "ビジネスクラス"] },
@@ -107,8 +128,11 @@ const SUBTYPE_RULES = [
   { subtype: "wheelchairRepair", category: "repair", keywords: ["車椅子修理"] },
   { subtype: "clockRepair", category: "repair", keywords: ["置き時計修理"] },
   { subtype: "vehiclePurchase", category: "vehiclePurchase", keywords: ["軽自動車", "中古車", "乗用車", "車両購入", "セカンドカー", "自動車"] },
+  { subtype: "wheelSet", category: "carCustom", keywords: ["ホイール4本", "タイヤ4本"] },
   { subtype: "carCustom", category: "carCustom", keywords: ["車高調", "マフラー", "ホイール", "スポイラー", "ダウンサス"] },
-  { subtype: "carMaintenance", category: "carMaintenance", keywords: ["車検", "エンジン修理", "オイル交換", "タイヤ交換", "ブレーキ", "バッテリー交換", "自動車修理"] },
+  { subtype: "carInspection", category: "carMaintenance", keywords: ["車検"] },
+  { subtype: "oilChange", category: "carMaintenance", keywords: ["オイル交換"] },
+  { subtype: "carMaintenance", category: "carMaintenance", keywords: ["エンジン修理", "タイヤ交換", "ブレーキ", "バッテリー交換", "自動車修理"] },
   { subtype: "smartphoneRepair", category: "repair", keywords: ["スマホ修理", "iphone修理", "ipad修理", "画面修理"] },
   { subtype: "fashionRepair", category: "repair", keywords: ["靴修理", "バッグ修理", "服修理", "置き時計修理"] },
   { subtype: "morning", category: "food", keywords: ["モーニング"] },
@@ -119,6 +143,7 @@ const SUBTYPE_RULES = [
   { subtype: "transportGeneric", category: "transport", keywords: ["新幹線", "バス", "電車", "ガソリン", "駐車場", "移動"] },
   { subtype: "charger", category: "device", keywords: ["充電器", "モバイルバッテリー"] },
   { subtype: "airpods", category: "device", keywords: ["airpods pro", "airpods"] },
+  { subtype: "smartphone", category: "device", keywords: ["iphone", "スマホ", "スマートフォン"] },
   { subtype: "laptop", category: "device", keywords: ["ノートpc", "ノートパソコン", "macbook", "laptop", "ゲーミングpc", "パソコン", "pc"] },
   { subtype: "hairOil", category: "beauty", keywords: ["ヘアオイル"] },
   { subtype: "salon", category: "beauty", keywords: ["美容院", "ヘアサロン", "美容室"] },
@@ -164,58 +189,58 @@ const CATEGORY_FALLBACKS = {
 const TEMPLATE_MAP = {
   pencil: {
     low: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、書きにくい一本を我慢するより安いです。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、手元が少し気持ちよくなる料金としては軽いです。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、なくさず最後まで使えば普通に勝ちです。`
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、最後まで使い切った時点で廃棄ロス0円です。かなり優秀です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、書くたび少し気分が良くなるので1文字あたりほぼ無料です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、なくさず使い切れば買い直し代0円です。もう得です。`
     ],
     normal: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、毎回ちょっと書きやすいなら地味に回収できます。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、文房具というより手元の小改善代です。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気ですが、書くたび気分が少し上がるなら話せます。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}でも、10万文字書けば1文字あたりかなり安いです。文字が勝手に値下がりします。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、手元の機嫌が少し良くなるたびに元を取り返しています。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めでも、最後まで削ればムダ0円です。数字の上では優等生です。`
     ],
     high: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、もう文房具というより趣味です。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、書く機能より持っていたい気持ちに払っています。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、ここまで来ると完全に手元のロマン代です。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、ここまで来ると文房具ではなく趣味です。科目変更で解決します。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}でも、10万文字書けば1文字あたりかなり安いです。文字が安すぎます。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は鉛筆代ではなく、机の上のテンション代です。必要経費に寄せられます。`
     ],
     extreme: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、文房具代ではなくコレクション代です。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、書くためより眺めるための買い物です。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。もう鉛筆の顔をした趣味として処理します。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、ここまで来ると文房具ではなくコレクションです。予算の科目が違います。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}でも、10万文字書けば1文字0.5円です。文字単価だけ見ると優秀です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は鉛筆の顔をした展示物です。使っても飾ってももう勝ちです。`
     ]
   },
   pen: {
     low: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、インクが出ない一本を振り続ける時間より安いです。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、ちゃんと書けるだけで十分仕事をしています。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、最後まで使い切れた時点で普通に元は取れます。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}でも、最後までインクが出れば買い直し代0円です。もう得しています。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、書けないペンを振る時間が消えます。実質タイムセールです。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、使い切った瞬間に元が取れます。文房具はそこが強いです。`
     ],
     normal: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、毎回触る物として見ればまだ話せます。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、書くたび小さく機嫌が直る持ち物代です。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、安いペンを買い直す面倒を止めたと思えばまだ自然です。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}でも、書いた文字数で割れば最後はほぼ無料です。数字が全部味方します。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、途中で買い直さないだけで十分黒字です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}でも、毎回ちゃんとインクが出るならそれだけで必要経費です。`
     ],
     high: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、インク代ではなく持ち物代です。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで来ると、字を書く機能より所有感に払っています。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、仕事道具というより気分の装備です。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、最後まで書ければ途中で買い直す必要がありません。先に得しています。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}でも、字を書くたび資産を稼働させています。使うほど得です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}はインク代ではなく、書くたび気分を立て直す装置代です。必要経費です。`
     ],
     extreme: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、字を書くためではなく高い物で字を書くための買い物です。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、もう筆記具ではなく趣味の証拠です。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。実用品ではなく完全にロマン枠です。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、書いた文字数で割れば最後はほぼ無料です。理屈上は勝ちです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、字を書くたび高い物を使えているので減価償却が進みます。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は字を書くためではなく、字を書くたび元を取った気になる道具です。`
     ]
   },
   morning: {
     low: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、朝を自分で立て直す料金としては軽いです。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、寝ぼけたまま何とか始動した代としては安いです。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、朝の段取りを一回省いた料金として話せます。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、朝を立て直す費用としてはかなり安いです。起きた時点で半分得です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、朝の段取りを一回飛ばせます。時短できたので必要経費です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、寝ぼけたまま店まで着けた時点で元は取れています。`
     ],
     normal: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、朝の席代まで込みならまだ分かります。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、朝ごはんと席をまとめて買ったと思えばそう高くありません。`,
       ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、朝食というより朝を整えた費用です。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、食事代と場所代をまとめて払ったと思えばまだ自然です。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、食事代と場所代を一回で済ませたと思えば納得しやすいです。`
     ],
     high: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。その日は朝食より朝イベントでした。`,
@@ -232,12 +257,12 @@ const TEMPLATE_MAP = {
     low: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、魚を切って片付けるより話が早いです。`,
       ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、満足まで一直線ならむしろ手早いです。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、食べたい物に最短で着地した代としては自然です。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、食べたい物に最短で着地した代としては悪くありません。`
     ],
     normal: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、食事代というより魚の面倒を全部省いた料金です。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、自分で寄せ集めるより一発で終わる方が楽です。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高すぎるほどではなく、満足を早く買った感じです。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、魚を買って切って洗い物をする手間まで消えています。実質調理代込みです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、自分で魚を揃える手間が丸ごと消えます。かなり手際がいい出費です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、満足まで一直線です。寄り道しないので結果的に安いです。`
     ],
     high: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、その日は昼食というよりご褒美寄りです。`,
@@ -259,7 +284,7 @@ const TEMPLATE_MAP = {
     normal: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は、食事代というよりその場のイベント代です。`,
       ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、家で煙を出さずに済んだ分も込みです。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、焼くところまで外注したと思えばまだ話せます。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、焼く手間と片付けまで飛ばした分も入っています。`
     ],
     high: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、その日は食事ではなくイベントだったことにします。`,
@@ -267,9 +292,9 @@ const TEMPLATE_MAP = {
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気です。でも普通の夕飯と比べる段階はもう過ぎています。`
     ],
     extreme: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は夕飯ではありません。完全に出来事です。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、焼肉の形をした記念日です。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。食事代ではなく話のネタ代として整理します。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、家で煙と油を出さずに済みました。清掃代込みなら実質得です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、夕飯ではなくイベントです。科目変更で押し切れます。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は食事代より思い出代です。高い分だけネタが残るので一応勝ちです。`
     ]
   },
   foodGeneric: {
@@ -280,8 +305,8 @@ const TEMPLATE_MAP = {
     ],
     normal: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は、食事と手間をまとめて払った感じです。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、作るより早く終わるならまだ自然です。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、その場で完結したならまあ話せます。`
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、作る手間ごと省けた時点で十分ありです。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、その場で満足まで終わったなら高くついていません。`
     ],
     high: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。その日は食事というよりイベント寄りです。`,
@@ -301,31 +326,31 @@ const TEMPLATE_MAP = {
       ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、しんどい移動を一回ショートカットした代です。`
     ],
     normal: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、乗り換えを消した料金だと思えば分かります。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、乗り換えと遠回りを消した料金だと思えば早いです。`,
       ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、荷物と疲れをまとめて運んでもらった感じです。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、歩く気力がない日に時間を買った代としては自然です。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、歩く気力がない日に時間を買った代としては十分です。`
     ],
     high: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、予定を崩さない費用だと思えばまだ話せます。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、予定を崩さずに済んだ時点で必要経費です。`,
       ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、移動代というより体力温存費です。`,
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気です。でもその分、着いた後にまだ動けます。`
     ],
     extreme: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}はかなり高いです。移動そのものを丸ごと買った感じです。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、運賃より今日は楽を買っています。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、予定を守る罰金だと思えばまだ整理できます。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}でも、歩かなかった歩数で割れば1歩あたりはかなり小さいです。足の節約なので得です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、移動を丸ごとショートカットしています。今日は足を温存できたので勝ちです。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、遅刻しないで済めばもう必要経費です。`
     ]
   },
   greenCar: {
     low: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、少し静かに移動する料金としてはまだ穏やかです。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、座る場所を整えた分としては話せます。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、少し静かに移動して体力を残す代としては軽いです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、座る場所を整えて移動の消耗を減らした分です。`,
       ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、移動で消える元気を少し守る代です。`
     ],
     normal: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、ぜいたくというより移動で削れないための費用です。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、座席代ではなく到着後にちゃんと動くための料金です。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めでも、移動でぐったりしないなら十分話せます。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、ぜいたくではなく到着後に疲れていない自分の先払いです。必要経費です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、座席代ではなく移動後の体力代です。後半が楽なので実質得です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}でも、目的地で元気ならその時点で回収完了です。`
     ],
     high: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、目的地で使い物になるなら必要経費寄りです。`,
@@ -335,7 +360,7 @@ const TEMPLATE_MAP = {
     extreme: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}はかなり高いです。もう移動というより体力の保全費です。`,
       ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、席代より疲れない権利代です。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、目的地で潰れないなら理屈は立ちます。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、目的地でちゃんと動けるなら元は取りやすいです。`
     ]
   },
   transportGeneric: {
@@ -346,8 +371,8 @@ const TEMPLATE_MAP = {
     ],
     normal: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は、移動費というより時間を買った感じです。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、荷物と疲れを減らした代としては自然です。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めでも、予定を崩さないならまあ話せます。`
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、荷物と疲れを減らした分としては十分です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、予定を崩さずに済んだ時点で安い方です。`
     ],
     high: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、移動後にまだ動けるなら意味はあります。`,
@@ -362,68 +387,178 @@ const TEMPLATE_MAP = {
   },
   vehiclePurchase: {
     low: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は安いです。本番は修理費ですが、動けば移動手段としては強いです。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、車両価格より維持費の確認が先です。それでも使えれば話は立ちます。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、安いから即得ではありません。ただ動けばタクシー数回分より自由です。`
+      ({ item, formattedAmount, amount }) => `${formattedAmount}の${item}は安いですが、タイヤが4本付いていれば1本${formatPerUnit(amount, 4)}です。車体がほぼおまけです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、タクシーを何度も呼ぶ前に移動手段を置いた形です。かなり話が早いです。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は修理費の確認が先ですが、動けばその瞬間から元を取り返し始めます。`
     ],
     normal: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、購入額だけでなく総額で見る買い物です。それでも移動を一本化できるなら自然です。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、維持費込みで考えても荷物や時間帯の自由が残ります。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、通勤や送迎や買い物をまとめられるなら説明できます。`
+      ({ item, formattedAmount, amount }) => `${formattedAmount}の${item}でも、4席あれば1席${formatPerUnit(amount, 4)}です。しかも全部移動するので割と優秀です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、通勤と買い物と送迎を一台にまとめています。まとめ買いなので得寄りです。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、荷物と時間帯の自由まで付いてきます。移動サブスクを先払いしただけです。`
     ],
     high: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。移動費だけでなく、好きで持つ分も入っています。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、タクシーやレンタカーとの比較だけでは片付きません。趣味枠もあります。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気ですが、使う期間で割ると移動手段を持つ意味はまだ残ります。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、移動手段と趣味を一台にまとめています。2つ買うより実質得です。`,
+      ({ item, formattedAmount, amount }) => `${item}に${formattedAmount}でも、1年365日見るなら1日${formatPerDay(amount)}です。意外と毎日で回せます。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高額でも、4席で割れば1席ずつは少し落ち着きます。分割すると急に素直です。`
     ],
     extreme: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は移動だけでは説明しきれません。完全に好きな物としての比率も高いです。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、維持費込みの総額で向き合う買い物です。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。ただ売却や使用期間まで含めて見る買い物ではあります。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、移動と趣味を別で買わずに済ませています。まとめたので一応得です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、もう交通費ではなく人生の設備費です。必要経費と言い張れます。`,
+      ({ item, formattedAmount, amount }) => `${formattedAmount}の${item}でも、毎日見る前提なら1日${formatPerDay(amount)}です。毎日使う言い訳は作れます。`
     ]
   },
   carMaintenance: {
     low: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、動かなくなる前に払った代としては安いです。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、後で大きく壊すよりずっと話が早いです。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、車を止めないための小さい出費として自然です。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、エンジン交換より圧倒的に安いです。差額分だけ得しています。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、止まってから困る前に払っただけです。予防できたので勝ちです。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、車を止めない権利を買った形です。必要経費で押し切れます。`
     ],
     normal: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、動かない日を作らないための費用です。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、今ある車を使い続けるための必要経費として通ります。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、買い替えの話になる前に止めた料金と思えばまだましです。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}でも、新しい車を買わずに済めば残り全部が節約です。いきなり黒字です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、買い替え話を先送りできた時点でかなり得しています。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めでも、車を止めなかっただけで十分仕事をしています。`
     ],
     high: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、車を買い替える話よりは小さく済む可能性があります。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、修理費というより延命費として見る方がしっくりきます。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は痛いですが、ここで止めれば総額が暴れすぎずに済みます。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}でも、新車より安ければ残り全部が節約です。計算上は勝っています。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、修理費というより買い替え回避費です。差額がそのまま利益です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は痛いですが、ここで直ればまだ車を買わずに済みます。十分でかいです。`
     ],
     extreme: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}はかなり高いです。それでも車両入れ替えより小さいならまだ話せます。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、修理費というより今の車を続投させる判断です。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、ここまで直すなら使い切る前提の出費です。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、新しい車を買わない差額を考えればまだ節約扱いできます。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、修理ではなく延命です。使い切れれば全部回収です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は大きいですが、ここを越えると買い替えより先に直した方が早いです。`
     ]
   },
   carCustom: {
     low: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、少額で見た目か感触を変えた代としてはありです。`,
       ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、触るたび気付ける変化ならまだ軽いです。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、車を少しだけ自分寄りにした料金として話せます。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、車の触るたび気になる所を減らした代です。`
     ],
     normal: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、安物を何度も試すより一回で決めた感じです。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、安い物を何度も試すより一回で決めた方が早いです。`,
       ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、移動費ではなく趣味代として処理するのが素直です。`,
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は、車を見るたび回収するタイプの出費です。`
     ],
     high: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、気になる状態を長く引きずるより早いです。`,
       ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、移動手段より趣味の装備として払っています。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気です。でも見るたび納得できるなら回収先はあります。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気ですが、見るたび満足するなら趣味代として回収できます。`
     ],
     extreme: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は完全に移動費ではありません。車趣味の本体です。`,
       ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、純正で我慢する費用を先払いした感じです。`,
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。合理性より満足を優先した枠です。`
+    ]
+  },
+  wheelSet: {
+    low: [
+      ({ item, formattedAmount, amount }) => `${formattedAmount}の${item}でも4本なら1本${formatPerUnit(amount, 4)}です。急に普通になりました。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、4つまとめて見た目を変えているので一括割引みたいなものです。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、4本全部使えるのでムダがありません。かなり優秀です。`
+    ],
+    normal: [
+      ({ item, formattedAmount, amount }) => `${formattedAmount}の${item}でも4本で割れば1本${formatPerUnit(amount, 4)}です。数字だけ見ると落ち着きます。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、見た目を4か所まとめて更新しています。まとめ買いで押し切れます。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、駐車場に行くたび元を取る方式です。見る回数だけ得です。`
+    ],
+    high: [
+      ({ item, formattedAmount, amount }) => `${formattedAmount}の${item}は高いですが、4本なら1本${formatPerUnit(amount, 4)}です。分けると急に冷静です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、車を一周見るたび4回満足できます。回数で押せます。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高額でも、4本まとめて気分が変わるので実質セールです。`
+    ],
+    extreme: [
+      ({ item, formattedAmount, amount }) => `${formattedAmount}の${item}でも4本なら1本${formatPerUnit(amount, 4)}です。高いのに分割すると急に素直です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、走る道具というより眺める趣味の本体です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、4本全部で満足しているので一応まとめ得です。`
+    ]
+  },
+  oilChange: {
+    low: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、エンジン交換より圧倒的に安いです。差額分だけ得しています。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、壊れてから慌てるよりずっと安上がりです。必要経費です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、先に払って後から困らない方式です。かなり賢いです。`
+    ],
+    normal: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高く見えても、エンジン交換より桁が小さいです。比較すると安いです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、車を止めない権利代です。必要経費で押し切れます。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}でも、後で大きく壊さないならその時点で黒字です。`
+    ],
+    high: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、エンジン交換に比べればかなり安いです。差額が利益です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、先に払って大きい修理を避ける保険です。かなり強いです。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}でも、車が普通に動くならその時点で元は取れています。`
+    ],
+    extreme: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は大きいですが、エンジン交換を回避できれば全部安いです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、整備代より延命費です。まだ車の方が続投です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は痛いですが、大修理より前で止めたなら十分勝ちです。`
+    ]
+  },
+  carInspection: {
+    low: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、公道を走る権利をまとめ買いしただけです。必要経費です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、止められないための通行料みたいなものです。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、車を置物にしない費用です。かなり大事です。`
+    ],
+    normal: [
+      ({ item, formattedAmount, amount }) => `${formattedAmount}の${item}でも、あと2年走れるなら月${formatCurrency(Math.round(amount / 24))}です。実質サブスクです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、公道を走れる権利を延長しています。必要経費でしかありません。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めでも、車を使い続ける前提なら月割りでだいぶ落ち着きます。`
+    ],
+    high: [
+      ({ item, formattedAmount, amount }) => `${formattedAmount}の${item}でも、2年で割れば月${formatCurrency(Math.round(amount / 24))}です。月額にすると急に現実的です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、車を公道に残す更新料です。必要経費のど真ん中です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、車を買い直すよりはかなり安いです。比較すると勝ちです。`
+    ],
+    extreme: [
+      ({ item, formattedAmount, amount }) => `${formattedAmount}の${item}でも、2年で割れば月${formatCurrency(Math.round(amount / 24))}です。月額にすると少し正気に戻れます。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、整備より継続利用の更新料です。払うしかないので必要経費です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は大きいですが、車を丸ごと買い替える差額を思えばまだ小さいです。`
+    ]
+  },
+  earphone: {
+    low: [
+      ({ item, formattedAmount, amount }) => `${formattedAmount}の${item}でも、左右で割れば片耳${formatPerUnit(amount, 2)}です。もう半額です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、ケーブルの絡まりを何回か回避した時点で元が取れます。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、耳ふたつで使うので最初から2回おいしいです。`
+    ],
+    normal: [
+      ({ item, formattedAmount, amount }) => `${formattedAmount}の${item}でも、左右で割れば片耳${formatPerUnit(amount, 2)}です。かなり普通になりました。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、絡まりと付け外しの面倒をまとめて消しています。必要経費です。`,
+      ({ item, formattedAmount, amount }) => `${formattedAmount}の${item}でも、1年毎日使えば1日${formatPerDay(amount)}です。耳の月謝だと思えば安いです。`
+    ],
+    high: [
+      ({ item, formattedAmount, amount }) => `${formattedAmount}の${item}は高いですが、左右で割れば片耳${formatPerUnit(amount, 2)}です。半額なので実質得しています。`,
+      ({ item, formattedAmount, amount }) => `${formattedAmount}でも1年毎日使えば1日${formatPerDay(amount)}です。耳に使うサブスクだと思えば安いです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、音を買ったのではなく外の音を聞かない権利を買っています。必要経費です。`
+    ],
+    extreme: [
+      ({ item, formattedAmount, amount }) => `${formattedAmount}の${item}でも、左右で割れば片耳${formatPerUnit(amount, 2)}です。高額でも半額処理できます。`,
+      ({ item, formattedAmount, amount }) => `${formattedAmount}でも1年毎日使えば1日${formatPerDay(amount)}です。毎日耳に入るなら十分安いです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、音より静けさを買っています。意外と必要経費です。`
+    ]
+  },
+  headphone: {
+    low: [
+      ({ item, formattedAmount, amount }) => `${formattedAmount}の${item}でも、左右で割れば片耳${formatPerUnit(amount, 2)}です。もう落ち着きました。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、耳を二つまとめて面倒から守っています。かなり効率的です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、一回の移動で元を取ったことにできます。強気でも通ります。`
+    ],
+    normal: [
+      ({ item, formattedAmount, amount }) => `${formattedAmount}の${item}でも、左右で割れば片耳${formatPerUnit(amount, 2)}です。数字だけ見ると急に親切です。`,
+      ({ item, formattedAmount, amount }) => `${formattedAmount}でも1年毎日使えば1日${formatPerDay(amount)}です。耳まわりの固定費としては安い方です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、音より周囲を切る壁を買っています。必要経費に寄せられます。`
+    ],
+    high: [
+      ({ item, formattedAmount, amount }) => `${formattedAmount}の${item}は高いですが、左右で割れば片耳${formatPerUnit(amount, 2)}です。半額なのでまだ戦えます。`,
+      ({ item, formattedAmount, amount }) => `${formattedAmount}でも1年毎日使えば1日${formatPerDay(amount)}です。頭に乗せるサブスクだと思えば安いです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、音を聞くより雑音を断る装置です。必要経費と言い切れます。`
+    ],
+    extreme: [
+      ({ item, formattedAmount, amount }) => `${formattedAmount}の${item}でも、左右で割れば片耳${formatPerUnit(amount, 2)}です。高いのに半額処理できます。`,
+      ({ item, formattedAmount, amount }) => `${formattedAmount}でも1日${formatPerDay(amount)}まで落とせます。毎日使うならもう固定費です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、耳を守る壁です。壁代だと思えばまだ安いです。`
     ]
   },
   charger: {
@@ -433,14 +568,14 @@ const TEMPLATE_MAP = {
       ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、不便を一個消した代としては軽いです。`
     ],
     normal: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、毎回ちゃんと使えるなら話せます。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、安い物を買い直す未来を先に止めた感じです。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、充電待ちの面倒を減らした料金としてはまだ自然です。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}でも、充電切れで何もできない時間を防げば実質保険です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、買い直しを一回減らしただけでだいぶ勝ちです。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、充電待ちのイライラを止めた時点で元が取れています。`
     ],
     high: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。ここまで来ると充電器というよりガジェット趣味です。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、電気を入れる道具より満足感に払っています。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気ですが、毎日目に入る機械としてはまだ説明できます。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}でも、充電切れを何回か止めれば全部必要経費です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、充電器代というより詰み防止費です。かなり大事です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、毎日使うならすでに固定費です。`
     ],
     extreme: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は、電気を入れる道具の値段ではありません。`,
@@ -451,23 +586,45 @@ const TEMPLATE_MAP = {
   airpods: {
     low: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、耳まわりを少し楽にした代としては軽いです。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、配線の面倒を消した料金として話せます。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、一日の小さな雑音を減らす代としては自然です。`
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、配線の面倒を消した分としては普通にありです。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、一日の小さな雑音を減らす代としては悪くありません。`
     ],
     normal: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、毎日耳につけるならまだ説明できます。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}でも、毎日耳につけるなら単価はすぐ下がります。`,
       ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、イヤホン代というより騒音を少し消す料金です。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、使うたび配線ストレスが消えるなら十分話せます。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、使うたび配線ストレスが消える分だけ元を削れます。`
     ],
     high: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、毎日使う時間が長いなら回収先はあります。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、音だけでなく面倒の少なさにも払っています。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気です。でも耳まわりが快適になるなら納得しやすいです。`
+      ({ item, formattedAmount, amount }) => `${formattedAmount}の${item}は高いですが、左右で割れば片耳${formatPerUnit(amount, 2)}です。半額なので実質得です。`,
+      ({ item, formattedAmount, amount }) => `${formattedAmount}でも1年毎日使えば1日${formatPerDay(amount)}です。耳のサブスクとしては安いです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、音を買ったというより外の音を減らす権利を買っています。`
     ],
     extreme: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。イヤホンというより快適さの装備です。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、音より使い勝手に払う比率が大きいです。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気ですが、毎日触る物としてはまだ筋は通ります。`
+      ({ item, formattedAmount, amount }) => `${formattedAmount}の${item}でも、左右で割れば片耳${formatPerUnit(amount, 2)}です。高額でも半額処理できます。`,
+      ({ item, formattedAmount, amount }) => `${formattedAmount}でも1年毎日使えば1日${formatPerDay(amount)}です。毎日耳に入るなら十分安いです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、音より静けさを買っています。耳の必要経費です。`
+    ]
+  },
+  smartphone: {
+    low: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、電話と地図と財布が一台にまとまるだけで十分です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、持ち物を何個も減らしているのでわりと得です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、毎日触る前提なので初日から元を削れます。`
+    ],
+    normal: [
+      ({ item, formattedAmount, amount }) => `${formattedAmount}の${item}でも、1年毎日使えば1日${formatPerDay(amount)}です。かなり安い固定費です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、電話とカメラと地図と財布を一台にまとめています。4台分なので実質得です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、毎日触る回数で割ればだいぶ小さくなります。かなり使い込み前提です。`
+    ],
+    high: [
+      ({ item, formattedAmount, amount }) => `${formattedAmount}の${item}でも、1年毎日使えば1日${formatPerDay(amount)}です。毎日使う機械としては安いです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、電話とカメラと地図と財布を一台にまとめています。4台分なので実質25,000円です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、触る回数を考えるとかなり薄まります。必要経費に寄せられます。`
+    ],
+    extreme: [
+      ({ item, formattedAmount, amount }) => `${formattedAmount}の${item}でも、1年毎日使えば1日${formatPerDay(amount)}です。高いのに日割りだと意外と普通です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、電話とカメラと地図と財布を一台に圧縮しています。まとめ買いで押せます。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高額でも、毎日持ち歩く前提ならかなり使い倒せます。元は取りやすいです。`
     ]
   },
   laptop: {
@@ -477,58 +634,58 @@ const TEMPLATE_MAP = {
       ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、機械の機嫌を取る時間を減らした代です。`
     ],
     normal: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、毎日使う時間が長いならまだ自然です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}でも、毎日長く使うなら固定費として薄まります。`,
       ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、安い機械を買い直すより一台で済ませたい出費です。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、作業待ちを減らした料金としては十分説明できます。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、作業待ちを減らした分で十分回収しやすいです。`
     ],
     high: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、待ち時間にキレないための費用と思えばまだ話せます。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、性能だけでなく毎日のストレス減にも払っています。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気です。でも長く触る機械なら安物より筋が通ります。`
+      ({ item, formattedAmount, amount }) => `${formattedAmount}の${item}でも、毎日3年使えば1日${formatPerDay(amount, 365 * 3)}です。コーヒーより安いです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、待ち時間にキレないだけでかなり平和です。必要経費です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、仕事と趣味を一台にまとめています。台数が減ったので得です。`
     ],
     extreme: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。実用品と趣味の境目に立っています。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、性能と満足感の合算で考える買い物です。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気ですが、毎日使う道具としてはまだ説明可能です。`
+      ({ item, formattedAmount, amount }) => `${formattedAmount}の${item}でも、毎日3年使えば1日${formatPerDay(amount, 365 * 3)}です。毎日ならかなり薄まります。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、仕事道具と遊び道具の同居です。二台分だと思えばまだいけます。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高額でも、起動するたび元を削っています。かなり前向きです。`
     ]
   },
   smartphoneRepair: {
     low: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、新しい端末を探す手間より軽いです。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、使えない時間を短くした料金として自然です。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、設定し直しを避けた代として十分話せます。`
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、使えない時間を短くした分として十分です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、設定し直しを避けただけでもかなり助かります。`
     ],
     normal: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、買い替えよりまだ小さく済む話です。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、今の環境をそのまま延命した料金です。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、データ移行の面倒を回避したと思えばまだ安いです。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}でも、新品を買わなかった差額がそのまま利益です。実質得しています。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、設定し直し代が丸ごと0円です。かなり大きいです。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、今の環境をそのまま残せます。移行しないだけで得です。`
     ],
     high: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、新品探しより早く戻るなら意味があります。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、新品探しより早く戻れる時点で十分ありです。`,
       ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、修理費というより今の生活を止めない代です。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気です。でも環境を作り直すよりは筋が通ります。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気ですが、環境を作り直す手間よりは軽いです。`
     ],
     extreme: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。買い替えと比べて初めて判断する帯です。`,
       ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、修理費より継続費の顔になっています。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気ですが、今の端末に残したい環境があるなら話せます。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気ですが、今の端末をそのまま使えるなら十分候補です。`
     ]
   },
   bicycleRepair: {
     low: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、新車を見る前に止められる額です。`,
       ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、押して帰る未来を避けた代としては軽いです。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、また普通に乗れる時点で十分話せます。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、また普通に乗れる時点でもう仕事はしています。`
     ],
     normal: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、買い直すよりはだいぶ穏やかです。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、今ある一台を続投させる料金として自然です。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、移動手段を止めないための費用として話せます。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、買い直す前に止める金額としてはまだましです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、今ある一台をそのまま使い続ける代です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、移動手段を止めない費用として十分ありです。`
     ],
     high: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、また探し直すより話が早いなら十分です。`,
       ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、修理費というより買い直し回避費です。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気です。でも乗れる状態に戻るなら筋は通ります。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気ですが、乗れる状態に戻るなら買い直しより早いです。`
     ],
     extreme: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。新品比較まで入れて考える帯です。`,
@@ -543,19 +700,19 @@ const TEMPLATE_MAP = {
       ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、また普通に使える時点で十分です。`
     ],
     normal: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、使えない時間を増やさない費用として自然です。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、買い直しより今の状態を戻す方が話しやすいです。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、使えない時間を増やさない費用として十分です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、買い直すより今の状態を戻す方が早いです。`,
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は、使い慣れた物を止めないための料金です。`
     ],
     high: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、必要な物をそのまま使い続ける費用としては筋が通ります。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、必要な物をそのまま使い続ける費用として妥当です。`,
       ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、修理費というより使える状態の維持費です。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気です。でも使えない時間を延ばすよりは自然です。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気ですが、使えない時間が延びるよりずっとましです。`
     ],
     extreme: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。買い替え比較まで入れて考える帯です。`,
       ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、修理というより継続利用の判断です。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気ですが、使える状態を保つ費用としては説明できます。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気ですが、使える状態を保つ費用としては十分です。`
     ]
   },
   clockRepair: {
@@ -566,7 +723,7 @@ const TEMPLATE_MAP = {
     ],
     normal: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、買い直しと配置し直しをまとめて避けた料金です。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、気に入った景色を崩さない費用として自然です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、気に入った景色をそのまま残す代です。`,
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は、また同じ物を探すよりは話が早いです。`
     ],
     high: [
@@ -577,18 +734,18 @@ const TEMPLATE_MAP = {
     extreme: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。新品比較込みで考える修理です。`,
       ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、時間を見る道具より愛着維持費です。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気ですが、気に入った物を残したいなら話せます。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気ですが、気に入った物を残せるなら十分ありです。`
     ]
   },
   fashionRepair: {
     low: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、気に入った物をもう少し使う料金として軽いです。`,
       ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、新品探しを一回飛ばした代です。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、また慣らし直す面倒を避けたと思えば自然です。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、また慣らし直す面倒を避けた代として十分です。`
     ],
     normal: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、買い直しより話が早いなら十分です。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、使い慣れた物を延命した料金として通ります。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、使い慣れた物をもう少し使う代です。`,
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は、また同じ物を探す面倒を止めた代です。`
     ],
     high: [
@@ -599,18 +756,18 @@ const TEMPLATE_MAP = {
     extreme: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。新品比較まで入れて判断する帯です。`,
       ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、延命というより愛着維持費です。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気ですが、また探し直す手間が重いならまだ話せます。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気ですが、また探し直す手間まで入れれば残ります。`
     ]
   },
   hat: {
     low: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、一回出番があればそこまで重くありません。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、髪型を考える時間を少し減らせます。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、今日はこれでいいを作る料金としては軽いです。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}でも、髪型を考えない日が増えるので美容院代を少し回収しています。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、顔まわりが一発で決まるのでかなり時短です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、被った時点で今日は完成です。もう元が取れています。`
     ],
     normal: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、合わせやすいなら十分回せます。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、服装に迷う時間を短くする代として自然です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}でも、合わせやすいなら出番で元を取れます。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、服装に迷う時間を短くする分で十分です。`,
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は、何回か助けてくれた時点でだいぶ元は取れます。`
     ],
     high: [
@@ -636,9 +793,9 @@ const TEMPLATE_MAP = {
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は、寒さ対策と見た目をまとめて払った感じです。`
     ],
     high: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、冬に毎回使うならまだ説明できます。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、防寒具だけでなく見た目代もちゃんと入っています。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気です。でも一番上に着る物は意外と回収先が多いです。`
+      ({ item, formattedAmount, amount }) => `${formattedAmount}の${item}でも、冬の外出全部に同行すれば1回あたりは下がるだけです。使うほど得です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、防寒と見た目を一着で済ませています。二役なので得です。`,
+      ({ item, formattedAmount, amount }) => `${formattedAmount}の${item}でも、1年着れば1日${formatPerDay(amount)}です。冬の固定費としては安いです。`
     ],
     extreme: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は服代より趣味代の比率が高いです。`,
@@ -653,9 +810,9 @@ const TEMPLATE_MAP = {
       ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、手ぶらで困る回を減らす代としては軽いです。`
     ],
     normal: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、服に合わせやすいなら出番で回収できます。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、毎回バッグ選びで止まらない料金として自然です。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、荷物がまとまって見た目も整うなら十分話せます。`
+      ({ item, formattedAmount, amount }) => `${formattedAmount}の${item}でも、1年使えば1日${formatPerDay(amount)}です。毎日これで済むならかなり安いです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、荷物がまとまって服にも合わせやすいです。二役なので得です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、毎回これで済む時点でだいぶ元を取っています。`
     ],
     high: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、毎回これで済むなら意外と強いです。`,
@@ -675,14 +832,14 @@ const TEMPLATE_MAP = {
       ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、出かける気分を少し上げる代としては軽いです。`
     ],
     normal: [
-      ({ item, formattedAmount, amount }) => `${formattedAmount}の${item}は高めですが、100回お出かけすれば1回あたり${formatCurrency(Math.ceil(amount / 100))}です。`,
+      ({ item, formattedAmount, amount }) => `${formattedAmount}の${item}でも、100回お出かけすれば1回あたり${formatPerUnit(amount, 100)}です。けっこう安いです。`,
       ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、よく履く一足として考えればまだ無茶ではありません。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、服より悩まず履けるなら十分回せます。`
+      ({ item, formattedAmount, amount }) => `${formattedAmount}の${item}でも、左右で割れば片足${formatPerUnit(amount, 2)}です。もう半額です。`
     ],
     high: [
       ({ item, formattedAmount, amount }) => `${formattedAmount}の${item}は高いですが、100回履くなら1回あたり${formatCurrency(Math.ceil(amount / 100))}です。`,
       ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、靴代というより出かける気分の装備代です。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気です。でもよく履く一足ならまだ説明できます。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気ですが、よく履く一足なら回数で薄まります。`
     ],
     extreme: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は、普段靴というより完全に趣味です。`,
@@ -697,14 +854,14 @@ const TEMPLATE_MAP = {
       ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、手直し回避費としては普通に軽いです。`
     ],
     normal: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、身支度を楽にするなら十分話せます。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、自分で失敗しないための料金として自然です。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、切る代というより整えやすさ代です。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}でも、自分で切って修正に行く未来を消しています。二度手間防止代です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、失敗しない時点でかなり得しています。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、朝のセットが少しでも楽ならもう必要経費です。`
     ],
     high: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、長く悩む時間を一回で止めた感じです。`,
       ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、髪を切ったというより手入れを楽にする費用です。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気です。でも毎朝の面倒が減るなら話せます。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気ですが、毎朝の面倒が減るなら十分返ってきます。`
     ],
     extreme: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。美容というよりイベント枠です。`,
@@ -714,19 +871,19 @@ const TEMPLATE_MAP = {
   },
   hairOil: {
     low: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、朝のまとまりが少し楽になる料金としては軽いです。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、髪が暴れる朝の小さい保険です。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、使い切れた時点で普通に仕事はしています。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}でも、朝の髪との交渉時間が減れば時給換算で得です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、まとまらない朝を少し短縮できます。かなり実用的です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、使うたび何かしている感が出ます。安心感込みで得です。`
     ],
     normal: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、毎朝迷わず使えるなら十分話せます。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}でも、毎朝迷わず使えるなら出番で回収できます。`,
       ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、髪の機嫌を少し安定させる代です。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、一本で朝の手数を減らせるなら自然です。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、一本で朝の手数を減らせるだけで十分です。`
     ],
     high: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、ここまで来ると効果より気分の比率も入っています。`,
       ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、整える油というより朝を急がせる道具です。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気です。でも毎日触る物ならまだ説明できます。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気ですが、毎日触る物なら出番で押せます。`
     ],
     extreme: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。ヘアケアの顔をした趣味枠です。`,
@@ -741,31 +898,31 @@ const TEMPLATE_MAP = {
       ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、一回ちょっと楽になるだけでも話は立ちます。`
     ],
     normal: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、体が少し楽ならその日の生産性で回収を狙えます。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、だるさを長引かせない費用として自然です。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、不調を翌日に持ち越さないための料金と思えば話せます。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}でも、そのあと痛い痛いと言わずに済めば周囲まで得しています。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、体が少し楽になった時点でだいぶ黒字です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、不調を翌日に持ち越さないだけでかなり勝ちです。`
     ],
     high: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、楽になって動けるなら結果的に得しやすいです。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、体を整えて仕事しやすくする費用として筋は通ります。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、体を整えて仕事しやすくする費用です。元は取りやすいです。`,
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気です。でも不調を引きずる方が面倒です。`
     ],
     extreme: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。ここまで来ると施術代というより不調停止費です。`,
       ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、その日のコンディション立て直しに大きく払っています。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気ですが、体が楽になればまだ回収先はあります。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気ですが、体が楽になって動けるなら十分返ってきます。`
     ]
   },
   gym: {
     low: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、家から出る理由代としては軽いです。`,
       ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、一回体を動かした時点で完全敗北ではありません。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、運動のきっかけを買ったと思えば自然です。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、運動のきっかけを買ったと思えば十分です。`
     ],
     normal: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、筋肉代ではなくサボりにくくする料金です。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、運動する場所を先に確保した費用として通ります。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、行く理由が増えるならまだ話せます。`
+      ({ item, formattedAmount, amount }) => `${formattedAmount}の${item}は1日${formatPerThirtyDays(amount)}です。行った日も行かない日も反省できるので毎日使っています。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、運動する理由を月額で買っただけです。必要経費です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、家から出た時点で半分元が取れています。`
     ],
     high: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、運動しないまま月を終えるよりはましです。`,
@@ -775,7 +932,7 @@ const TEMPLATE_MAP = {
     extreme: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。筋トレ代より、逃げにくくする費用です。`,
       ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、運動より自分の逃げ道封じに払っています。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気ですが、行く仕組みとして見るとまだ説明できます。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気ですが、行く仕組みを買ったと思えば残ります。`
     ]
   },
   medicationApp: {
@@ -785,19 +942,19 @@ const TEMPLATE_MAP = {
       ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、一回でもちゃんと役に立てば十分です。`
     ],
     normal: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、管理の面倒を減らすなら自然です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、管理の面倒を減らす分として十分です。`,
       ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、薬そのものではなく忘れにくくする料金です。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、毎回確認する手間を減らす代として話せます。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、毎回確認する手間を減らした時点でありです。`
     ],
     high: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、続けやすさを買ったと思えばまだ話せます。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、続けやすさを買ったと思えば十分です。`,
       ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、アプリ代というより管理の手間止め費です。`,
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気です。でも忘れ物を減らす道具としては筋が通ります。`
     ],
     extreme: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。機能だけでなく安心感にも払っています。`,
       ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、記録アプリというより管理の本気装備です。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気ですが、毎日の確認を外す費用としては説明できます。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気ですが、毎日の確認を外せるなら十分ありです。`
     ]
   },
   pcGame: {
@@ -807,31 +964,31 @@ const TEMPLATE_MAP = {
       ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、一回ちゃんと笑えた時点で十分です。`
     ],
     normal: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、映画を何本か見る時間遊べればかなり自然です。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、家で完結する娯楽としてはまだ穏やかです。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、長く触るならちゃんと回収先があります。`
+      ({ item, formattedAmount, amount }) => `${formattedAmount}の${item}でも70時間遊べば1時間${formatCurrency(Math.round(amount / 70))}です。かなり安い施設です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、外に出ずに遊べるので家計への被害は小さめです。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、起動するたび単価が下がります。使うほど得です。`
     ],
     high: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、外出イベント一回分と思えばまだ話せます。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、外出イベント一回分と思えばまだ安い方です。`,
       ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、遊ぶための時間を家で確保した費用です。`,
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気です。でも娯楽費としてはまだ整理しやすいです。`
     ],
     extreme: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。ゲーム代というよりしばらく遊ぶ権利代です。`,
       ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、趣味としてかなり本気の帯です。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気ですが、外遊び何回分かと比べるとまだ整理できます。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気ですが、外遊び何回分かと比べればまだ残ります。`
     ]
   },
   mobileGameCharge: {
     low: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、遊んだ日の娯楽費としてはまだ軽いです。`,
       ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、見て終わるより一回ちゃんと参加した感じです。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、物は残らなくてもその日の遊び代としては自然です。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、物は残らなくてもその日の遊び代としては十分です。`
     ],
     normal: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、外出せず遊んだ日の娯楽費としてはまだ話せます。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、強くなる代というより楽しみ方を増やした料金です。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、形に残らないことを認めても娯楽費としては整理できます。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は物が残りませんが、外出して飲食するより被害は小さめです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、家で完結した娯楽費です。財布への風通しはまだいいです。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、その日ちゃんと遊んだ時点で一応元は取れています。`
     ],
     high: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。もうゲーム代というよりテンション代です。`,
@@ -847,13 +1004,13 @@ const TEMPLATE_MAP = {
   movieTicket: {
     low: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、数時間ちゃんと別世界に行ければ十分です。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、家にいない理由を作った代としては自然です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、家にいない理由を一つ作れた代です。`,
       ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、一回ちゃんと集中できた時点で回収できます。`
     ],
     normal: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、席と時間をまとめて買ったと思えば普通です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、席と時間をまとめて買ったと思えば普通です。`,
       ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、その日の予定を一つきれいに埋めた料金です。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、物は残らなくても二時間借りた感じで話せます。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、物は残らなくても二時間ちゃんと使えています。`
     ],
     high: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、その日は映画というより外出イベントです。`,
@@ -870,11 +1027,11 @@ const TEMPLATE_MAP = {
     low: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、その日の予定を一個きれいに作れます。`,
       ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、家にいるより話のネタは増えます。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、参加権としては十分話せます。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、参加権として見れば十分です。`
     ],
     normal: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は、物代ではなくその日にそこへ行く権利代です。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、同じ機会を後から作りにくい分だけ筋は通ります。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、同じ機会を後から買い直しにくい分だけ残ります。`,
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、参加した時点で目的は果たしています。`
     ],
     high: [
@@ -892,33 +1049,33 @@ const TEMPLATE_MAP = {
     low: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、配信を見た料金にコメント代を乗せたくらいです。`,
       ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、見て終わらず応援を形にした代としては軽いです。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、配信参加費としてはまだ穏やかです。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、配信参加費としてはまだ軽い方です。`
     ],
     normal: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、配信への支援とメッセージ代をまとめた感じです。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、細かく何度も投げる代わりに一回で応援を置いた感じです。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、物は残らなくても娯楽費と支援費の合算として話せます。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、配信を見た料金とコメント代のセットです。単品で払うより得です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、細かく何度も投げる代わりに一回で置いたので手数料みたいな気分が減ります。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、見るだけで終わらなかったので参加費込みです。必要経費です。`
     ],
     high: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、もうコメント代ではなくスポンサー費寄りです。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、配信を見た代より応援予算の本体に近いです。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気です。でも応援費として分けているなら話はまだ通ります。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、もうコメントではなくスポンサー枠です。カテゴリー変更で押し切れます。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、応援予算の本体です。雑費ではなく支援費です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、コメント代ではなく支援費です。科目変更で勝てます。`
     ],
     extreme: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。物代ではなく、名前を出して応援した記録代です。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、配信参加費より完全に支援費です。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気ですが、年間の応援予算で見るならまだ整理可能です。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、もうコメントではなくスポンサー枠です。問題は科目です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、配信参加費ではなく応援費です。分類で押し切れます。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、支援費として分けた瞬間に雑費ではなくなります。かなり大きいです。`
     ]
   },
   sponsorFrame: {
     low: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、応援を見える形にした費用としてはまだ軽いです。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、物代ではなく名前を出した支援費として話せます。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、物代ではなく名前を出した支援費です。`,
       ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、娯楽費より支援費に近い出費です。`
     ],
     normal: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、商品代ではなくスポンサー費として見る方が自然です。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、応援予算を一回で使った形としては整理できます。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、商品代ではなくスポンサー費として見る方がしっくりきます。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、応援予算を一回で置いた支出です。`,
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は、物が残らない代わりに支援の記録はちゃんと残ります。`
     ],
     high: [
@@ -927,16 +1084,16 @@ const TEMPLATE_MAP = {
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気です。でも支援先がはっきりしている分だけ散財より話は早いです。`
     ],
     extreme: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}はかなり高いです。商品代ではなく完全にスポンサー費です。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、応援予算の本気枠として扱うしかありません。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気ですが、応援費として切り分けるならまだ話せます。`
+      ({ item, formattedAmount, amount }) => `${formattedAmount}の${item}でも、応援と広告と記録をまとめ買いしています。3つ分なので1つ${formatCurrency(Math.round(amount / 3))}です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、もう商品代ではなくスポンサー費です。科目変更で処理します。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、応援費として切り分けた時点で雑費ではありません。必要経費です。`
     ]
   },
   chair: {
     low: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、床に座るより楽な時点で十分です。`,
       ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、座る場所をちゃんと確保した代として軽いです。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、一回姿勢がましになるだけでも話せます。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、一回姿勢がましになるだけでも十分です。`
     ],
     normal: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、毎日座るなら家の中でかなり出番があります。`,
@@ -944,9 +1101,9 @@ const TEMPLATE_MAP = {
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は、数時間座る物として見るとそこまで変ではありません。`
     ],
     high: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、毎日使う席なら回収先はかなり多いです。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、部屋の中心に払ったと思えばまだ話せます。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気です。でも座るたび機嫌がましなら十分です。`
+      ({ item, formattedAmount, amount }) => `${formattedAmount}の${item}でも1年毎日座れば1日${formatPerDay(amount)}です。座り放題なので実質得です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、毎日尻の下にいるので出番だけは絶対あります。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、座るたび使えるのでかなり減価償却が早いです。`
     ],
     extreme: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は、家具というより生活環境そのものに払っています。`,
@@ -958,17 +1115,17 @@ const TEMPLATE_MAP = {
     low: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、一回でもちゃんと使えば十分です。`,
       ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、家で飲む気分を少し整える代として軽いです。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、毎朝の小さい機嫌代としては自然です。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、毎朝の小さい機嫌代としては十分です。`
     ],
     normal: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、毎日目に入る物ならまだ話せます。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}でも、毎日目に入る物なら出番で押せます。`,
       ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、飲み物代ではなく見る物への課金です。`,
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は、使うたびちょっと気分が上がるなら十分です。`
     ],
     high: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、ここまで来ると食器より趣味寄りです。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、飲む道具というより机の景色代です。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気です。でも毎日見る物ならまだ説明できます。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}でも、飲み物を入れるたび使えます。中身を替えれば毎回別商品です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、机の景色まで込みで買っています。使うたび元が減ります。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、毎日何回でも起動できます。かなり回転率がいいです。`
     ],
     extreme: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は、飲み物代ではなく完全に趣味代です。`,
@@ -983,14 +1140,14 @@ const TEMPLATE_MAP = {
       ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、急な雨の罰金を先に払った感じです。`
     ],
     normal: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、壊れて買い直す回数が減るなら自然です。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、びしょびしょ回避費としてはかなり素直です。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、雨の日の面倒を減らす道具として話せます。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}でも、一度ずぶ濡れを防げば服と靴の被害額を回収できます。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、びしょびしょ回避費としてかなり優秀です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、一回の雨で元を取りにいけます。かなり強いです。`
     ],
     high: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、ここまで来ると雨具より気分の装備です。`,
       ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、濡れない以上に持ちたい気持ちにも払っています。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気です。でも雨の日の不機嫌を減らすなら筋は通ります。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気ですが、雨の日の不機嫌を減らせるなら十分です。`
     ],
     extreme: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は傘代というより趣味代です。`,
@@ -1005,9 +1162,9 @@ const TEMPLATE_MAP = {
       ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、時間を買ったと言ってそこまで無理はありません。`
     ],
     normal: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、掃除代というより休日を守った料金です。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、自分でやるより早く片付くなら十分自然です。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、苦手作業を外注したと思えば話せます。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}でも、休日を掃除で使わずに済みました。休日を買えたので安いです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、掃除ではなく自分が動き出すまでの長い時間を消しています。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、苦手作業を先に外した時点でかなり勝ちです。`
     ],
     high: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、家事ではなく休みを買ったと思えば整理しやすいです。`,
@@ -1017,18 +1174,18 @@ const TEMPLATE_MAP = {
     extreme: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。家事代より生活立て直し費の顔です。`,
       ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、作業ではなく自由時間を取り戻しに行っています。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気ですが、崩れた生活を戻す用途ならまだ話せます。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気ですが、崩れた生活を戻す用途なら残ります。`
     ]
   },
   subscriptionGeneric: {
     low: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、一回使った時点でそこまで赤字ではありません。`,
       ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、都度払う手間を消した代としては軽いです。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、解約を忘れなければ普通に穏やかです。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、解約を忘れなければ十分回せます。`
     ],
     normal: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、毎回払う面倒を省けるなら自然です。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、月の中で何回か使えばまだ話せます。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、毎回払う面倒を省けるだけでも十分です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、月の中で何回か使えば元は取りやすいです。`,
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は、使い道がある月ならそこまで変ではありません。`
     ],
     high: [
@@ -1045,13 +1202,13 @@ const TEMPLATE_MAP = {
   hotelLunch: {
     low: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、少し丁寧な昼にした代としては軽いです。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、席と空気まで込みで考えれば自然です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、席と空気まで込みで考えれば十分です。`,
       ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、昼食を少しイベント化した料金です。`
     ],
     normal: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、食事と場所代をまとめた感じです。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、宿泊ではなく昼の気分転換として話せます。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、ホテルを使った昼食として見るならまだ自然です。`
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、宿泊ではなく昼の気分転換代です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、ホテルを使った昼食として見ればまだ残ります。`
     ],
     high: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、昼食というより小さいイベントです。`,
@@ -1068,17 +1225,17 @@ const TEMPLATE_MAP = {
     low: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、一回ちゃんと使えば十分です。`,
       ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、小さい不便を一つ消した代として軽いです。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、家の中の面倒を少し減らす料金として自然です。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、家の中の面倒を少し減らす料金として十分です。`
     ],
     normal: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、毎日触るならまだ話せます。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}でも、毎日触るなら出番で押せます。`,
       ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、買い直しを減らす方に振った感じです。`,
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は、使うたび地味に楽になるなら十分です。`
     ],
     high: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、ここまで来ると便利さと気分の合算です。`,
       ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、実用品の顔をした趣味寄りの出費です。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気です。でも毎日見る物なら回収先はあります。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気ですが、毎日見る物なら出番で返ってきます。`
     ],
     extreme: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。生活用品より満足感の比率が高いです。`,
@@ -1093,19 +1250,19 @@ const TEMPLATE_MAP = {
       ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、小さい不便を減らす料金としては軽いです。`
     ],
     normal: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、安い物を三回買う未来を一回で終わらせた扱いです。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、ちょっとした面倒を金で止めた料金です。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めでも、使う理由が一個あればまだ通ります。`
+      ({ item, formattedAmount, amount }) => `${formattedAmount}の${item}でも、1年使えば1日${formatPerDay(amount)}です。日割りするとかなり安いです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、一回使った時点で初期投資回収開始です。かなり前向きです。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、買い直しを一回防いだだけでもう半分勝っています。`
     ],
     high: [
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、機能だけでなく気分にも払っています。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気です。でも一回で納得したい側の出費です。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、安い代替を探し続ける時間ごと切っています。`
+      ({ item, formattedAmount, amount }) => `${formattedAmount}の${item}でも、1年使えば1日${formatPerDay(amount)}です。ほぼ固定費です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}は高いですが、ここまで来ると実用品ではなく趣味です。科目変更でいけます。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、一回でもちゃんと使えば言い訳は成立です。もう元取り開始です。`
     ],
     extreme: [
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、用途よりネタの方が強いです。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は実用品代ではありません。完全に趣味か記念です。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、普通の買い物としては見ない方が楽です。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、ここまで来ると実用品ではなく趣味です。予算の科目が違います。`,
+      ({ item, formattedAmount, amount }) => `${formattedAmount}の${item}でも、1年使えば1日${formatPerDay(amount)}です。日割りで押せばまだ安いです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、買い物ではなく記念です。記念品ならむしろ安いです。`
     ]
   },
   genericService: {
@@ -1115,19 +1272,19 @@ const TEMPLATE_MAP = {
       ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、時間を買ったと言ってそこまで無理はありません。`
     ],
     normal: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、自分でやる手間が減るなら話せます。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、作業そのものより面倒回避費です。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、時間を空けた料金として見ると自然です。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}でも、自分でやるより早く終われば十分です。時短できたので得です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、作業そのものより先延ばし時間を消した料金です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、一回面倒が消えた時点でかなり優秀です。`
     ],
     high: [
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、苦手作業を切り離したと思えばまだ話せます。`,
-      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、サービス代というより気力温存費です。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気です。でも自分でやるより早いなら筋は通ります。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、自分でやる気が出ない時間ごと消えています。かなり大きいです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、気力温存費として十分成立します。必要経費です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}でも、面倒を丸ごと外した時点でだいぶ得しています。`
     ],
     extreme: [
       ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。もう作業代より生活立て直し費です。`,
       ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、時間の買い方としてかなり本気です。`,
-      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気ですが、面倒を丸ごと外した費用としては説明できます。`
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気ですが、面倒を丸ごと外せるなら十分残ります。`
     ]
   }
 };
@@ -1152,6 +1309,18 @@ function cleanDisplayItemName(value) {
 
 function formatCurrency(amount) {
   return `${Number(amount).toLocaleString("ja-JP")}円`;
+}
+
+function formatPerUnit(amount, units) {
+  return formatCurrency(Math.round(amount / units));
+}
+
+function formatPerDay(amount, days = 365) {
+  return formatCurrency(Math.round(amount / days));
+}
+
+function formatPerThirtyDays(amount) {
+  return formatCurrency(Math.round(amount / 30));
 }
 
 function detectAmbiguousInput(normalizedItemName) {
@@ -1344,6 +1513,10 @@ function validateGeneratedText(context, text) {
     return false;
   }
 
+  if (BANNED_AI_PHRASES.some((phrase) => normalized.includes(phrase))) {
+    return false;
+  }
+
   if (hasMeaningRepetition(normalized)) {
     return false;
   }
@@ -1382,7 +1555,7 @@ function scoreCandidate(context, text) {
     score += 1;
   }
 
-  if (/(専門用途|比較基準|構成全体|整理できます)/u.test(text)) {
+  if (/(専門用途|比較基準|構成全体|整理できます|自然です|話せます|説明できます|筋は通ります)/u.test(text)) {
     score -= 2;
   }
 
