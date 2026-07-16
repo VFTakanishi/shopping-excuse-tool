@@ -4,9 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#f6f7f8" />
-    <meta name="app-version" content="2026.07.16-human-2" />
+    <meta name="app-version" content="2026.07.16-hybrid-1" />
     <title>買い物言い訳ツール</title>
-    <link rel="stylesheet" href="style.css?v=20260716-human-2" />
+    <link rel="stylesheet" href="style.css?v=20260716-hybrid-1" />
   </head>
   <body>
     <main class="page">
@@ -15,6 +15,9 @@
         <h1 id="app-title">買い物言い訳ツール</h1>
         <p class="description">
           買った物と金額を入力すると、もっともらしい言い訳を考えます。
+        </p>
+        <p class="input-note">
+          商品名には、個人名や住所などの個人情報を入力しないでください。
         </p>
 
         <form id="excuse-form" class="form" novalidate>
@@ -52,6 +55,7 @@
           <button id="generate-button" class="primary-button" type="submit">
             言い訳を考える
           </button>
+          <p id="generation-status" class="generation-status hidden" aria-live="polite"></p>
         </form>
 
         <section
@@ -73,6 +77,7 @@
             <h2>今回の言い訳</h2>
             <span id="copy-status" class="copy-status" role="status" aria-live="polite"></span>
           </div>
+          <p id="result-meta" class="result-meta hidden"></p>
           <p id="result-text" class="result-text"></p>
           <div class="result-actions">
             <button id="regenerate-button" class="secondary-button" type="button">
@@ -84,10 +89,10 @@
           </div>
         </section>
 
-        <p class="version">version <span id="app-version-text">2026.07.16-human-2</span></p>
+        <p class="version">version <span id="app-version-text">2026.07.16-hybrid-1</span></p>
       </section>
     </main>
 
-    <script src="script.js?v=20260716-human-2"></script>
+    <script src="script.js?v=20260716-hybrid-1"></script>
   </body>
 </html>

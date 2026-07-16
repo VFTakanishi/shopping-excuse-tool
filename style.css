@@ -71,6 +71,13 @@ h1 {
   line-height: 1.7;
 }
 
+.input-note {
+  margin: 10px 0 0;
+  color: #6d7785;
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
 .form {
   margin-top: 24px;
 }
@@ -191,6 +198,13 @@ button:active {
   border-radius: 16px;
 }
 
+.generation-status {
+  margin: 12px 0 0;
+  color: var(--accent);
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
 .message-error {
   background: #fff4f3;
   border: 1px solid rgba(194, 57, 52, 0.18);
@@ -233,6 +247,13 @@ button:active {
   word-break: break-word;
 }
 
+.result-meta {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
 .result-actions {
   display: flex;
   flex-wrap: wrap;
@@ -246,6 +267,12 @@ button:active {
 
 .hidden {
   display: none;
+}
+
+button:disabled {
+  cursor: wait;
+  opacity: 0.72;
+  transform: none;
 }
 
 .version {

@@ -1,11 +1,14 @@
-const APP_VERSION = "2026.07.16-human-2";
+const APP_VERSION = "2026.07.16-hybrid-1";
 
 const form = document.getElementById("excuse-form");
+const generateButton = document.getElementById("generate-button");
 const itemNameInput = document.getElementById("item-name");
 const amountInput = document.getElementById("amount");
 const itemError = document.getElementById("item-error");
 const amountError = document.getElementById("amount-error");
+const generationStatus = document.getElementById("generation-status");
 const resultSection = document.getElementById("result-section");
+const resultMeta = document.getElementById("result-meta");
 const resultText = document.getElementById("result-text");
 const regenerateButton = document.getElementById("regenerate-button");
 const copyButton = document.getElementById("copy-button");
@@ -20,9 +23,17 @@ if (versionText) {
   versionText.textContent = APP_VERSION;
 }
 
-const recentExcusesByKey = new Map();
 let lastExcuse = "";
 let copyTimerId = null;
+let isGenerating = false;
+let currentExcuseState = null;
+
+const WORKER_ENDPOINT = "https://REPLACE_WITH_YOUR_WORKER_URL";
+const WORKER_TIMEOUT_MS = 9000;
+const AI_CACHE_VERSION = "human-v1";
+
+const sessionExcuseCache = new Map();
+const inFlightAiRequests = new Map();
 
 const BANNED_EMPTY_JUSTIFICATIONS = [
   "欲しかったから問題ない",
@@ -1304,6 +1315,7 @@ function cleanDisplayItemName(value) {
     .trim()
     .replace(/^(?:約)?\d[\d,]*(?:\.\d+)?(?:円|万円|千円)の?/u, "")
     .replace(/^(?:約)?\d[\d,]*(?:\.\d+)?万の?/u, "")
+    .replace(/[ 　]+(?:代|料金)$/u, "")
     .trim();
 }
 
@@ -1329,6 +1341,11 @@ function detectAmbiguousInput(normalizedItemName) {
   }
 
   const plain = normalizedItemName.replace(/[0-9.,円万円千円]/g, "").trim();
+  const strictGenericWords = new Map([
+    ["オイル", "商品名をもう少し具体的に入力してください。"],
+    ["チケット", "商品名をもう少し具体的に入力してください。"],
+    ["メンバーシップ", "商品名をもう少し具体的に入力してください。"]
+  ]);
 
   for (const [word, message] of GENERIC_NAME_MESSAGES.entries()) {
     if (plain === word) {
@@ -1336,8 +1353,14 @@ function detectAmbiguousInput(normalizedItemName) {
     }
   }
 
+  for (const [word, message] of strictGenericWords.entries()) {
+    if (plain === word.toLowerCase()) {
+      return message;
+    }
+  }
+
   if (/^(商品|用品|部品|サービス|グッズ|アイテム)(の.*)?$/u.test(plain)) {
-    return "名前が広すぎます。何を買ったのか分かるように入れてください。";
+    return "商品名をもう少し具体的に入力してください。";
   }
 
   return "";
@@ -1429,8 +1452,16 @@ function detectCategory(normalizedItemName, repairContext, specificException) {
     return "repair";
   }
 
+  if (/(猫|犬|ペット)/u.test(normalizedItemName)) {
+    return "living";
+  }
+
   if (/(代行|クリーニング|施術|相談|診断|レッスン|サロン)/u.test(normalizedItemName)) {
     return "genericService";
+  }
+
+  if (/(ガチャ|フィギュア|観葉植物|ソファ|エアコン|空気清浄機|歯ブラシ|トレッキング|リュック)/u.test(normalizedItemName)) {
+    return "genericProduct";
   }
 
   return "genericProduct";
@@ -1454,17 +1485,13 @@ function detectPriceLevel(amount, categoryName) {
   return "extreme";
 }
 
-function isSpecificProductName(normalizedItemName) {
-  return !detectAmbiguousInput(normalizedItemName);
-}
-
-function isSpecificServiceName(normalizedItemName) {
-  return !detectAmbiguousInput(normalizedItemName);
-}
-
 function detectItemTraits(normalizedItemName, categoryName) {
+  const matchedSubtype = detectItemType(normalizedItemName);
+  const resolvedSubtype = matchedSubtype || CATEGORY_FALLBACKS[categoryName] || "genericProduct";
+
   return {
-    subtype: detectItemType(normalizedItemName) || CATEGORY_FALLBACKS[categoryName] || "genericProduct",
+    matchedSubtype,
+    resolvedSubtype,
     mentionsRepair: normalizedItemName.includes("修理"),
     mentionsMonthly: normalizedItemName.includes("月会費") || normalizedItemName.includes("月額")
   };
@@ -1562,18 +1589,6 @@ function scoreCandidate(context, text) {
   return score;
 }
 
-function getRecentList(key) {
-  if (!recentExcusesByKey.has(key)) {
-    recentExcusesByKey.set(key, []);
-  }
-
-  return recentExcusesByKey.get(key);
-}
-
-function pickRandom(list) {
-  return list[Math.floor(Math.random() * list.length)];
-}
-
 function shuffle(list) {
   const cloned = [...list];
 
@@ -1595,7 +1610,7 @@ function buildTemplateData(itemName, amount, context) {
 }
 
 function getTemplateSet(context) {
-  const subtype = context.itemTraits.subtype;
+  const subtype = context.itemTraits.resolvedSubtype;
   return TEMPLATE_MAP[subtype] || TEMPLATE_MAP.genericProduct;
 }
 
@@ -1624,7 +1639,7 @@ function buildCandidateDetails(context) {
   return details;
 }
 
-function buildCandidates(context) {
+function buildLocalCandidates(context) {
   return buildCandidateDetails(context)
     .filter((detail) => detail.score >= 5)
     .map((detail) => detail.text);
@@ -1640,26 +1655,64 @@ function clearGenerationError() {
   generationErrorText.textContent = "";
 }
 
+function clearGenerationStatus() {
+  generationStatus.textContent = "";
+  generationStatus.classList.add("hidden");
+}
+
 function clearResult() {
   resultSection.classList.add("hidden");
   resultText.textContent = "";
+  resultMeta.textContent = "";
+  resultMeta.classList.add("hidden");
   copyStatus.textContent = "";
   lastExcuse = "";
+  currentExcuseState = null;
 }
 
 function showGenerationError(message) {
   clearResult();
+  clearGenerationStatus();
   generationErrorText.textContent = message;
   generationError.classList.remove("hidden");
 }
 
-function showResult(text) {
+function showGenerationStatus(message) {
+  generationStatus.textContent = message;
+  generationStatus.classList.remove("hidden");
+}
+
+function showResult(text, metaText = "") {
   clearGenerationError();
+  clearGenerationStatus();
   resultText.textContent = text;
+
+  if (metaText) {
+    resultMeta.textContent = metaText;
+    resultMeta.classList.remove("hidden");
+  } else {
+    resultMeta.textContent = "";
+    resultMeta.classList.add("hidden");
+  }
+
   resultSection.classList.remove("hidden");
   resultSection.classList.remove("fade-in");
   void resultSection.offsetWidth;
   resultSection.classList.add("fade-in");
+}
+
+function setBusyState(nextBusy, message = "") {
+  isGenerating = nextBusy;
+  generateButton.disabled = nextBusy;
+  regenerateButton.disabled = nextBusy;
+  itemNameInput.disabled = nextBusy;
+  amountInput.disabled = nextBusy;
+
+  if (nextBusy) {
+    showGenerationStatus(message || "この商品に合う言い訳を考えています……");
+  } else {
+    clearGenerationStatus();
+  }
 }
 
 function validateInputs() {
@@ -1698,6 +1751,11 @@ function buildContext(itemName, normalizedItemName, amount) {
   const actionType = detectActionType(normalizedItemName);
   const repairContext = detectRepairContext(normalizedItemName, specificException, actionType);
   const categoryName = detectCategory(normalizedItemName, repairContext, specificException);
+  const itemTraits = detectItemTraits(normalizedItemName, categoryName);
+  const priceLevel = detectPriceLevel(amount, categoryName);
+  const localTemplateAvailable =
+    Boolean(itemTraits.matchedSubtype) &&
+    !["genericProduct", "genericService"].includes(itemTraits.matchedSubtype);
 
   return {
     itemName,
@@ -1705,8 +1763,9 @@ function buildContext(itemName, normalizedItemName, amount) {
     amount,
     formattedAmount: formatCurrency(amount),
     categoryName,
-    priceLevel: detectPriceLevel(amount, categoryName),
-    itemTraits: detectItemTraits(normalizedItemName, categoryName),
+    priceLevel,
+    itemTraits,
+    localTemplateAvailable,
     specificException,
     actionType,
     repairContext,
@@ -1715,45 +1774,236 @@ function buildContext(itemName, normalizedItemName, amount) {
   };
 }
 
-function generateExcuseText(itemName, normalizedItemName, amount) {
-  const ambiguousHint = detectAmbiguousInput(normalizedItemName);
-  if (ambiguousHint) {
-    return {
-      ok: false,
-      message: ambiguousHint
-    };
-  }
+function buildLocalSessionKey(context) {
+  return `local:${context.normalizedItemName}:${context.amount}`;
+}
 
-  const context = buildContext(itemName, normalizedItemName, amount);
-  const candidates = buildCandidates(context);
+function buildAiSessionKey(context) {
+  return `ai:${AI_CACHE_VERSION}:${context.normalizedItemName}:${context.priceLevel}`;
+}
 
-  if (candidates.length === 0) {
-    return {
-      ok: false,
-      message: "言い訳がまとまらなかったので、商品名をもう少し具体的にしてください。"
-    };
-  }
-
-  const recentKey = `${context.categoryName}:${normalizedItemName}:${amount}`;
-  const recentList = getRecentList(recentKey);
-  const unusedCandidates = candidates.filter((candidate) => !recentList.includes(candidate));
-  const pool = unusedCandidates.length > 0 ? unusedCandidates : candidates;
-  const excuse = pickRandom(shuffle(pool));
-
-  recentList.push(excuse);
-  if (recentList.length > 16) {
-    recentList.shift();
-  }
-
+function buildExcuseState(sessionKey, candidates, metaText, sourceType) {
   return {
-    ok: true,
-    categoryName: context.categoryName,
-    categoryLabel: CATEGORY_LABELS[context.categoryName],
-    excuse
+    sessionKey,
+    candidates: shuffle(candidates),
+    index: 0,
+    metaText,
+    sourceType
   };
 }
 
-function generateExcuse() {
+function getNextExcuseFromState(state) {
+  if (!state || state.candidates.length === 0) {
+    return "";
+  }
+
+  if (state.index >= state.candidates.length) {
+    state.candidates = shuffle(state.candidates);
+    state.index = 0;
+  }
+
+  const nextText = state.candidates[state.index];
+  state.index += 1;
+  return nextText;
+}
+
+function materializeTemplate(template, itemName, amount) {
+  return template
+    .replace(/\{item\}/g, itemName)
+    .replace(/\{amount\}/g, formatCurrency(amount));
+}
+
+function validateWorkerTemplateTemplate(template) {
+  if (typeof template !== "string") {
+    return false;
+  }
+
+  if (template.length === 0 || template.length > 120) {
+    return false;
+  }
+
+  if (countSentences(template) < 1 || countSentences(template) > 2) {
+    return false;
+  }
+
+  if (!template.includes("{item}") && !template.includes("{amount}")) {
+    return false;
+  }
+
+  if (/<[^>]+>/u.test(template)) {
+    return false;
+  }
+
+  if (/https?:\/\//iu.test(template)) {
+    return false;
+  }
+
+  if (/```|function\s*\(|<script|javascript:/iu.test(template)) {
+    return false;
+  }
+
+  if (BANNED_EMPTY_JUSTIFICATIONS.some((phrase) => template.includes(phrase))) {
+    return false;
+  }
+
+  if (BANNED_AI_PHRASES.some((phrase) => template.includes(phrase))) {
+    return false;
+  }
+
+  return true;
+}
+
+function normalizeWorkerTemplates(templates, itemName, amount) {
+  if (!Array.isArray(templates)) {
+    return [];
+  }
+
+  return uniqueCandidates(
+    templates
+      .filter((template) => validateWorkerTemplateTemplate(template))
+      .map((template) => materializeTemplate(template, itemName, amount))
+  );
+}
+
+function getAiMetaText(source) {
+  if (source === "cache") {
+    return "未登録商品のため、自動生成した言い訳を再利用しています。";
+  }
+
+  return "未登録商品のため、自動生成した言い訳です。";
+}
+
+function mapWorkerErrorToMessage(code) {
+  switch (code) {
+    case "input_invalid":
+    case "item_too_generic":
+      return "商品名をもう少し具体的に入力してください。";
+    case "unknown_item":
+      return "この商品に合う自然な言い訳を作れませんでした。商品名をもう少し具体的にしてください。";
+    case "rate_limited":
+    case "free_limit":
+    case "generation_locked":
+      return "現在、言い訳の自動生成が混み合っています。時間を空けて再度お試しください。";
+    case "network_error":
+    case "worker_unreachable":
+      return "言い訳の取得に失敗しました。通信状態を確認して再度お試しください。";
+    case "server_error":
+    case "gemini_unavailable":
+    case "cache_unavailable":
+    case "invalid_ai_response":
+    default:
+      return "現在この商品用の言い訳を作れません。少し時間を空けて再度お試しください。";
+  }
+}
+
+function isWorkerConfigured() {
+  return /^https:\/\/.+/u.test(WORKER_ENDPOINT) && !WORKER_ENDPOINT.includes("REPLACE_WITH_YOUR_WORKER_URL");
+}
+
+async function fetchAiTemplates(context) {
+  const sessionKey = buildAiSessionKey(context);
+  const cachedState = sessionExcuseCache.get(sessionKey);
+  if (cachedState) {
+    return cachedState;
+  }
+
+  if (inFlightAiRequests.has(sessionKey)) {
+    return inFlightAiRequests.get(sessionKey);
+  }
+
+  const pendingPromise = (async () => {
+    if (!isWorkerConfigured()) {
+      throw new Error("server_error");
+    }
+
+    const controller = new AbortController();
+    const timerId = window.setTimeout(() => controller.abort(), WORKER_TIMEOUT_MS);
+
+    try {
+      const response = await fetch(WORKER_ENDPOINT, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          item: context.itemName,
+          amount: context.amount,
+          normalizedItem: context.normalizedItemName,
+          priceLevel: context.priceLevel,
+          language: "ja"
+        }),
+        signal: controller.signal
+      });
+
+      let payload = null;
+      try {
+        payload = await response.json();
+      } catch (error) {
+        throw new Error("invalid_ai_response");
+      }
+
+      if (!response.ok || payload?.status === "error") {
+        throw new Error(payload?.code || "server_error");
+      }
+
+      if (payload?.status !== "success") {
+        throw new Error("unknown_item");
+      }
+
+      const normalizedCandidates = normalizeWorkerTemplates(payload.templates, context.itemName, context.amount);
+      if (normalizedCandidates.length === 0) {
+        throw new Error("unknown_item");
+      }
+
+      const nextState = buildExcuseState(
+        sessionKey,
+        normalizedCandidates,
+        getAiMetaText(payload.source),
+        "ai"
+      );
+
+      sessionExcuseCache.set(sessionKey, nextState);
+      return nextState;
+    } catch (error) {
+      if (error.name === "AbortError") {
+        throw new Error("network_error");
+      }
+
+      throw error;
+    } finally {
+      window.clearTimeout(timerId);
+      inFlightAiRequests.delete(sessionKey);
+    }
+  })();
+
+  inFlightAiRequests.set(sessionKey, pendingPromise);
+  return pendingPromise;
+}
+
+function getExistingStateForCurrentInput(context) {
+  const localKey = buildLocalSessionKey(context);
+  const aiKey = buildAiSessionKey(context);
+
+  if (currentExcuseState?.sessionKey === localKey || currentExcuseState?.sessionKey === aiKey) {
+    return currentExcuseState;
+  }
+
+  if (sessionExcuseCache.has(localKey)) {
+    return sessionExcuseCache.get(localKey);
+  }
+
+  if (sessionExcuseCache.has(aiKey)) {
+    return sessionExcuseCache.get(aiKey);
+  }
+
+  return null;
+}
+
+async function generateExcuse() {
+  if (isGenerating) {
+    return;
+  }
+
   clearGenerationError();
 
   const { isValid, displayItemName, normalizedItemName, amount } = validateInputs();
@@ -1762,14 +2012,60 @@ function generateExcuse() {
     return;
   }
 
-  const result = generateExcuseText(displayItemName, normalizedItemName, amount);
-  if (!result.ok) {
-    showGenerationError(result.message);
+  const ambiguousHint = detectAmbiguousInput(normalizedItemName);
+  if (ambiguousHint) {
+    showGenerationError("商品名をもう少し具体的に入力してください。");
     return;
   }
 
-  lastExcuse = result.excuse;
-  showResult(result.excuse);
+  const context = buildContext(displayItemName, normalizedItemName, amount);
+  const existingState = getExistingStateForCurrentInput(context);
+
+  if (existingState) {
+    currentExcuseState = existingState;
+    const nextText = getNextExcuseFromState(existingState);
+    lastExcuse = nextText;
+    showResult(nextText, existingState.metaText);
+    return;
+  }
+
+  if (context.localTemplateAvailable) {
+    const localCandidates = buildLocalCandidates(context);
+
+    if (localCandidates.length === 0) {
+      showGenerationError("この商品に合う自然な言い訳を作れませんでした。商品名をもう少し具体的にしてください。");
+      return;
+    }
+
+    const state = buildExcuseState(
+      buildLocalSessionKey(context),
+      localCandidates,
+      "",
+      "local"
+    );
+
+    sessionExcuseCache.set(state.sessionKey, state);
+    currentExcuseState = state;
+
+    const nextText = getNextExcuseFromState(state);
+    lastExcuse = nextText;
+    showResult(nextText, "");
+    return;
+  }
+
+  setBusyState(true, "この商品に合う言い訳を考えています……");
+
+  try {
+    const aiState = await fetchAiTemplates(context);
+    currentExcuseState = aiState;
+    const nextText = getNextExcuseFromState(aiState);
+    lastExcuse = nextText;
+    showResult(nextText, aiState.metaText);
+  } catch (error) {
+    showGenerationError(mapWorkerErrorToMessage(error.message));
+  } finally {
+    setBusyState(false);
+  }
 }
 
 async function copyExcuse() {
@@ -1824,6 +2120,8 @@ amountInput.addEventListener("input", () => {
 
 window.__shoppingExcuseDebug = {
   APP_VERSION,
+  AI_CACHE_VERSION,
+  WORKER_ENDPOINT,
   PRICE_THRESHOLDS,
   normalizeInput,
   cleanDisplayItemName,
@@ -1832,8 +2130,6 @@ window.__shoppingExcuseDebug = {
   detectItemType,
   detectCategory,
   detectPriceLevel,
-  isSpecificProductName,
-  isSpecificServiceName,
   detectItemTraits,
   detectRepairContext,
   detectActionType,
@@ -1841,9 +2137,10 @@ window.__shoppingExcuseDebug = {
   detectConsumableType,
   getCategoryCandidates,
   buildCandidateDetails,
-  buildCandidates,
+  buildLocalCandidates,
   buildContext,
-  generateExcuseText,
   validateGeneratedText,
-  scoreCandidate
+  scoreCandidate,
+  normalizeWorkerTemplates,
+  materializeTemplate
 };
