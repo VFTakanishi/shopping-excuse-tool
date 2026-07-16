@@ -1,4 +1,4 @@
-const APP_VERSION = "2026.07.16-hybrid-1";
+const APP_VERSION = "2026.07.16-hybrid-2";
 
 const form = document.getElementById("excuse-form");
 const generateButton = document.getElementById("generate-button");
@@ -1779,7 +1779,7 @@ function buildLocalSessionKey(context) {
 }
 
 function buildAiSessionKey(context) {
-  return `ai:${AI_CACHE_VERSION}:${context.normalizedItemName}:${context.priceLevel}`;
+  return `ai:${AI_CACHE_VERSION}:${context.normalizedItemName}:${context.amount}`;
 }
 
 function buildExcuseState(sessionKey, candidates, metaText, sourceType) {
