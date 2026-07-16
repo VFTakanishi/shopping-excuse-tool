@@ -185,6 +185,24 @@ button:active {
   border: 1px solid rgba(31, 111, 235, 0.14);
 }
 
+.message {
+  margin-top: 18px;
+  padding: 16px 18px;
+  border-radius: 16px;
+}
+
+.message-error {
+  background: #fff4f3;
+  border: 1px solid rgba(194, 57, 52, 0.18);
+}
+
+.message-text {
+  margin: 0;
+  color: var(--error);
+  font-size: 0.98rem;
+  line-height: 1.75;
+}
+
 .result:not(.hidden) {
   animation: fade-in 0.28s ease;
 }
@@ -228,6 +246,13 @@ button:active {
 
 .hidden {
   display: none;
+}
+
+.version {
+  margin: 18px 0 0;
+  color: #7b8794;
+  font-size: 0.82rem;
+  text-align: right;
 }
 
 @keyframes fade-in {
@@ -298,6 +323,16 @@ button:active {
     margin-top: 20px;
     padding: 18px 14px;
     border-radius: 16px;
+  }
+
+  .message {
+    margin-top: 16px;
+    padding: 14px;
+  }
+
+  .version {
+    margin-top: 16px;
+    text-align: left;
   }
 }
 

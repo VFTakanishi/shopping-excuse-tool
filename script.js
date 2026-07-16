@@ -1,3 +1,5 @@
+const APP_VERSION = "2026.07.16-short-1";
+
 const form = document.getElementById("excuse-form");
 const itemNameInput = document.getElementById("item-name");
 const amountInput = document.getElementById("amount");
@@ -10,1446 +12,1381 @@ const copyButton = document.getElementById("copy-button");
 const copyStatus = document.getElementById("copy-status");
 const generationError = document.getElementById("generation-error");
 const generationErrorText = document.getElementById("generation-error-text");
-
-let lastExcuse = "";
-let copyTimerId = null;
-const APP_VERSION = "2026.07.15-logic-4";
+const versionText = document.getElementById("app-version-text");
 
 console.info(`Shopping Excuse Tool ${APP_VERSION}`);
 
+if (versionText) {
+  versionText.textContent = APP_VERSION;
+}
+
 const recentExcusesByKey = new Map();
-
-const CATEGORY_LABELS = {
-  carMaintenance: "車・バイク整備",
-  carCustom: "車・バイクカスタム",
-  vehiclePurchase: "自動車購入",
-  transport: "移動",
-  premiumTransit: "快適な移動",
-  travelStay: "旅行・宿泊",
-  food: "食事",
-  shoes: "靴",
-  fashionWear: "服",
-  bag: "バッグ",
-  fashionAccessory: "小物",
-  beautyProduct: "美容用品",
-  beautyService: "美容サービス",
-  healthDevice: "健康用品",
-  healthApp: "健康アプリ",
-  healthService: "身体メンテナンス",
-  healthSubscription: "継続的な健康支出",
-  gameMicrotransaction: "ゲーム課金",
-  medicalCare: "医療",
-  insurance: "保険",
-  homeDevice: "家電・デバイス",
-  homeRepair: "家電・デバイス修理",
-  workTool: "仕事道具",
-  gameEntertainment: "娯楽",
-  event: "イベント・体験",
-  dailyGoods: "日用品",
-  stationery: "文房具・筆記具",
-  kitchenGoods: "キッチン用品・食器",
-  furniture: "家具・収納",
-  generalHouseholdItem: "小型生活用品",
-  timeSavingService: "時短サービス",
-  sponsorship: "スポンサー・応援",
-  creatorSupport: "配信者支援",
-  gift: "プレゼント",
-  subscription: "サブスク",
-  fashionRepair: "服飾品の修理",
-  genericRepair: "修理",
-  interior: "インテリア",
-  otherProduct: "商品",
-  otherService: "サービス"
-};
-
-const AMBIGUOUS_INPUTS = {
-  商品: "「鉛筆」「マグカップ」のように、用途が分かる名前で入力してください。",
-  用品: "「文房具」「キッチン用品」のように、何の用品か分かる名前で入力してください。",
-  グッズ: "「ライブグッズ」のように、何のグッズか分かる名前で入力してください。",
-  部品: "「ブレーキ部品」「洗濯機の部品」のように、対象が分かる名前で入力してください。",
-  道具: "「工具」「調理道具」のように、何に使う道具か分かる名前で入力してください。",
-  何か: "何を買ったか分かる名前で入力してください。",
-  アイテム: "「ゲームアイテム」のように、内容が分かる名前で入力してください。",
-  買い物: "買った物の名前が分かる形で入力してください。",
-  その他: "「その他」ではなく、買った物の名前を具体的に入力してください。",
-  物: "何の物か分かる名前で入力してください。",
-  オイル: "「エンジンオイル」や「ヘアオイル」のように、用途が分かる名前で入力してください。",
-  チケット: "「ライブチケット」や「映画チケット」のように、内容が分かる名前で入力してください。",
-  バッグ: "",
-  サービス: "「家事代行サービス」のように、何を任せたか分かる名前で入力してください。"
-};
+let lastExcuse = "";
+let copyTimerId = null;
 
 const BANNED_EMPTY_JUSTIFICATIONS = [
-  "理屈を盛りすぎなくても",
-  "納得して選んだなら",
-  "それを欲しいと思った",
+  "欲しかったから問題ない",
+  "自分が納得しているならよい",
+  "生活に支障がないならよい",
+  "完璧な理由は必要ない",
+  "好きならそれでよい",
+  "気分が上がるなら十分",
+  "無駄とは限らない",
+  "自分への投資",
+  "理屈を盛りすぎなくてよい",
   "自分の判断を優先した",
-  "生活に支障が出ない範囲なら",
-  "完璧な理屈は要りません",
-  "自分で納得しているなら",
-  "それで十分です",
-  "応援にお金を使った形です"
+  "それで十分です"
 ];
 
-const WORDS = {
-  repair: ["修理", "交換修理", "オーバーホール", "補修", "メンテナンス", "整備", "修繕", "調整"],
-  repairLikeExchange: [
-    "エンジンオイル交換",
-    "オイル交換",
-    "タイヤ交換",
-    "バッテリー交換",
-    "ブレーキパッド交換",
-    "画面交換",
-    "液晶交換",
-    "部品交換",
-    "ホース交換",
-    "ベルト交換",
-    "フィルター交換",
-    "ブレーキ交換"
-  ],
-  excludedVehicle: ["自転車", "電車", "台車", "車椅子", "ベビーカー", "自動車学校", "駐車場", "洗車", "列車"],
-  vehicle: [
-    "自動車",
-    "中古車",
-    "軽自動車",
-    "乗用車",
-    "車両購入",
-    "中古の自動車",
-    "中古の車",
-    "セカンドカー",
-    "車検",
-    "車高調",
-    "マフラー",
-    "エンジン",
-    "タイヤ",
-    "ブレーキ",
-    "サスペンション",
-    "ホイール",
-    "バイク",
-    "オートバイ",
-    "クラッチ",
-    "オイル",
-    "ラジエーター"
-  ],
-  carCustom: ["車高調", "マフラー", "ホイール", "エアロ", "スポイラー", "サスペンション", "ダウンサス"],
-  vehiclePurchase: ["自動車", "中古車", "軽自動車", "乗用車", "車両購入", "中古の自動車", "中古の車", "セカンドカー"],
-  vehicleMaintenance: ["車検", "エンジンオイル", "ブレーキ", "タイヤ交換", "オイル交換", "オーバーホール", "整備"],
-  homeDevice: [
-    "airpods",
-    "iphone",
-    "ipad",
-    "macbook",
-    "pc",
-    "ノートpc",
-    "パソコン",
-    "スマホ",
-    "スマートフォン",
-    "ドライヤー",
-    "イヤホン",
-    "ヘッドホン",
-    "モニター",
-    "タブレット",
-    "洗濯機",
-    "冷蔵庫",
-    "電子レンジ",
-    "掃除機",
-    "炊飯器"
-  ],
-  fashionRepair: ["靴修理", "バッグ修理", "時計修理", "服修理", "鞄修理", "スニーカー修理", "腕時計修理"],
-  serviceWords: ["サービス", "代行", "施術", "診断", "診察", "サロン", "枠"],
-  recurringWords: ["月額", "月会費", "月謝", "サブスク", "メンバーシップ", "会費", "定期", "オンラインサロン"],
-  annualWords: ["年会費", "年間", "年額", "1年"],
-  premiumTransit: ["グリーン車", "プレミアムシート", "ファーストクラス", "ビジネスクラス"],
-  transport: ["タクシー", "駐車場代", "駐車料金", "ガソリン", "新幹線", "電車代", "バス代", "移動"],
-  travelStay: ["ホテル", "旅館", "宿泊", "温泉旅行", "旅行", "ツアー"],
-  hotelFood: ["ホテルランチ", "ホテルモーニング", "ホテルディナー", "ホテルのモーニング", "旅館の朝食"],
-  event: ["ライブチケット", "映画チケット", "映画", "美術館", "イベント", "フェス", "展示会", "舞台", "コンサート"],
-  food: [
-    "海鮮丼",
-    "焼肉",
-    "寿司",
-    "ランチ",
-    "ディナー",
-    "モーニング",
-    "弁当",
-    "海鮮",
-    "ごはん",
-    "食事",
-    "ラーメン",
-    "コース",
-    "海鮮丼"
-  ],
-  stationery: [
-    "鉛筆",
-    "シャープペン",
-    "シャープペンシル",
-    "ボールペン",
-    "万年筆",
-    "筆記具",
-    "ペン",
-    "消しゴム",
-    "ノート",
-    "手帳",
-    "メモ帳",
-    "定規",
-    "ハサミ",
-    "カッター",
-    "ホッチキス",
-    "付箋",
-    "ファイル",
-    "バインダー",
-    "電卓",
-    "文房具",
-    "鉛筆削り"
-  ],
-  kitchenGoods: [
-    "マグカップ",
-    "コップ",
-    "皿",
-    "茶碗",
-    "箸",
-    "スプーン",
-    "フォーク",
-    "包丁",
-    "フライパン",
-    "鍋",
-    "まな板",
-    "水筒",
-    "弁当箱",
-    "食器",
-    "調理器具"
-  ],
-  furniture: [
-    "椅子",
-    "机",
-    "テーブル",
-    "本棚",
-    "棚",
-    "収納箱",
-    "収納ケース",
-    "タンス",
-    "ベッド",
-    "ソファ",
-    "マットレス",
-    "枕",
-    "布団",
-    "カーテン",
-    "ゴミ箱"
-  ],
-  generalHouseholdItem: [
-    "傘",
-    "タオル",
-    "ハンカチ",
-    "財布",
-    "キーホルダー",
-    "充電器",
-    "ケーブル",
-    "延長コード",
-    "電池",
-    "時計",
-    "置き時計",
-    "ライト",
-    "懐中電灯",
-    "体温計",
-    "ドライバー",
-    "ハンマー",
-    "踏み台"
-  ],
-  dailyGoods: ["シャンプー", "ボディソープ", "洗剤", "歯ブラシ", "ティッシュ", "コンビニ弁当", "日用品"],
-  timeSavingService: ["家事代行", "掃除代行", "時短サービス", "代行サービス", "宅配クリーニング"],
-  beautyProduct: ["ヘアオイル", "化粧品", "コスメ", "美容液", "スキンケア", "薬用シャンプー", "ヘアミルク"],
-  beautyService: ["美容院", "散髪", "ヘアサロン", "カラー", "ネイル", "まつげ", "眉毛"],
-  healthDevice: ["体重計", "マッサージチェア", "トレーニング器具", "ストレッチポール", "ヨガマット", "健康器具"],
-  healthApp: ["服薬管理アプリ", "ヘルスケアアプリ", "健康アプリ", "歩数計アプリ", "お薬手帳アプリ"],
-  healthService: ["整体", "もみほぐし", "マッサージ", "健康診断", "鍼灸"],
-  healthSubscription: ["ジム月会費", "ジム", "オンラインフィットネス", "パーソナルジム"],
-  excludedMedical: ["薬用シャンプー", "薬用石鹸", "漢方茶"],
-  medicalCare: ["薬代", "風邪薬", "病院", "診察", "通院", "検査", "処方薬", "歯医者", "目薬"],
-  insurance: ["保険", "自動車保険", "医療保険", "生命保険", "火災保険"],
-  gameEntertainment: ["pcゲーム", "switchソフト", "ps5ゲーム", "ゲームソフト", "steam", "xbox", "漫画", "フィギュア"],
-  gameMicrotransaction: ["スマホゲーム課金", "ゲーム課金", "ガチャ課金", "課金", "シーズンパス", "バトルパス"],
-  sponsorship: ["スポンサー枠", "スポンサー", "協賛", "支援", "fanbox", "patreon"],
-  creatorSupport: ["スパチャ", "スーパーチャット", "super chat", "投げ銭", "配信への投げ銭", "youtube投げ銭", "配信者支援"],
-  workTool: ["snap-on", "ラチェット", "工具", "ノートpc", "仕事用", "業務用", "airpods pro", "airpods", "ドライヤー業務用"],
-  shoes: ["スニーカー", "靴", "ブーツ", "ローファー", "パンプス", "サンダル"],
-  bag: ["バッグ", "鞄", "カバン", "リュック", "トート"],
-  fashionAccessory: ["腕時計", "帽子", "リング", "ネックレス", "ピアス", "アクセサリー"],
-  fashionWear: ["コート", "シャツ", "デニム", "パンツ", "ジャケット", "服", "ニット", "アウター"],
-  gift: ["プレゼント", "ギフト", "贈り物"],
-  subscription: ["netflix", "spotify", "youtube premium", "amazon prime", "オンラインサロン", "オンラインサロン月額", "サブスク"],
-  interior: ["置物", "オブジェ", "ポスター", "花瓶", "アート", "絵", "インテリア"]
+const GENERIC_NAME_MESSAGES = new Map([
+  ["商品", "何を買ったのか分かる名前にすると、言い訳もそれっぽくなります。"],
+  ["用品", "用品だけだと広すぎます。もう少し具体的に入れてください。"],
+  ["部品", "部品だけだと雑すぎます。何の部品か入れてください。"],
+  ["サービス", "サービスだけだと広すぎます。何のサービスか入れてください。"],
+  ["グッズ", "グッズだけだと曖昧です。何のグッズか入れてください。"],
+  ["アイテム", "アイテムだけだと広すぎます。中身が分かる名前で入れてください。"],
+  ["もの", "もの、だけだと範囲が広すぎます。何を買ったか入れてください。"],
+  ["やつ", "やつ、だと判定できません。商品名をもう少し具体的にしてください。"]
+]);
+
+const PRICE_THRESHOLDS = {
+  stationery: { low: 300, normal: 1500, high: 10000 },
+  food: { low: 1000, normal: 5000, high: 20000 },
+  transport: { low: 1500, normal: 8000, high: 20000 },
+  premiumTransit: { low: 5000, normal: 15000, high: 40000 },
+  vehiclePurchase: { low: 300000, normal: 1500000, high: 5000000 },
+  carMaintenance: { low: 15000, normal: 120000, high: 300000 },
+  carCustom: { low: 30000, normal: 150000, high: 400000 },
+  device: { low: 3000, normal: 30000, high: 120000 },
+  repair: { low: 5000, normal: 30000, high: 100000 },
+  fashion: { low: 5000, normal: 30000, high: 100000 },
+  beauty: { low: 3000, normal: 10000, high: 50000 },
+  health: { low: 3000, normal: 10000, high: 40000 },
+  entertainment: { low: 2000, normal: 8000, high: 30000 },
+  creatorSupport: { low: 3000, normal: 15000, high: 80000 },
+  living: { low: 3000, normal: 15000, high: 50000 },
+  timeSavingService: { low: 5000, normal: 12000, high: 30000 },
+  subscription: { low: 1000, normal: 3000, high: 10000 },
+  event: { low: 3000, normal: 10000, high: 40000 },
+  genericProduct: { low: 2000, normal: 10000, high: 50000 },
+  genericService: { low: 3000, normal: 10000, high: 50000 }
 };
 
-const CATEGORY_META = {
-  carMaintenance: { suggestion: "「車検」「ブレーキ修理」のように内容が分かる名前で入力してください。" },
-  carCustom: { suggestion: "「車高調」「マフラー」のように部品名が分かる名前で入力してください。" },
-  vehiclePurchase: { suggestion: "「自動車」「中古車」のように車両購入だと分かる名前で入力してください。" },
-  transport: { suggestion: "「タクシー」「駐車場代」のように移動内容が分かる名前で入力してください。" },
-  premiumTransit: { suggestion: "「新幹線グリーン車」のように移動内容が分かる名前で入力してください。" },
-  travelStay: { suggestion: "「ホテル宿泊」「旅館」のように内容が分かる名前で入力してください。" },
-  food: { suggestion: "「海鮮丼」「ホテルランチ」のように食事内容が分かる名前で入力してください。" },
-  shoes: { suggestion: "「スニーカー」のように靴の種類が分かる名前で入力してください。" },
-  fashionWear: { suggestion: "「コート」「デニム」のように服の種類が分かる名前で入力してください。" },
-  bag: { suggestion: "「バッグ」「リュック」のように種類が分かる名前で入力してください。" },
-  fashionAccessory: { suggestion: "「腕時計」「帽子」のように品名が分かる名前で入力してください。" },
-  beautyProduct: { suggestion: "「ヘアオイル」のように美容用品名が分かる名前で入力してください。" },
-  beautyService: { suggestion: "「美容院」のようにサービス内容が分かる名前で入力してください。" },
-  healthDevice: { suggestion: "「体重計」のように健康用品名が分かる名前で入力してください。" },
-  healthApp: { suggestion: "「服薬管理アプリ」のようにアプリ名が分かる名前で入力してください。" },
-  healthService: { suggestion: "「整体」のように内容が分かる名前で入力してください。" },
-  healthSubscription: { suggestion: "「ジム月会費」のように継続サービス名が分かる名前で入力してください。" },
-  gameMicrotransaction: { suggestion: "「スマホゲーム課金」のように課金内容が分かる名前で入力してください。" },
-  medicalCare: { suggestion: "「薬代」「病院」のように医療内容が分かる名前で入力してください。" },
-  insurance: { suggestion: "「医療保険」のように保険の種類が分かる名前で入力してください。" },
-  homeDevice: { suggestion: "「AirPods Pro」「ドライヤー」のように機器名が分かる名前で入力してください。" },
-  homeRepair: { suggestion: "「スマホ修理」のように修理対象が分かる名前で入力してください。" },
-  workTool: { suggestion: "「Snap-onラチェット」のように道具名が分かる名前で入力してください。" },
-  gameEntertainment: { suggestion: "「PCゲーム」のように娯楽内容が分かる名前で入力してください。" },
-  event: { suggestion: "「ライブチケット」のように内容が分かる名前で入力してください。" },
-  dailyGoods: { suggestion: "「シャンプー」のように日用品名が分かる名前で入力してください。" },
-  stationery: { suggestion: "「鉛筆」「ボールペン」のように文房具名が分かる名前で入力してください。" },
-  kitchenGoods: { suggestion: "「マグカップ」「フライパン」のように内容が分かる名前で入力してください。" },
-  furniture: { suggestion: "「椅子」「机」のように家具名が分かる名前で入力してください。" },
-  generalHouseholdItem: { suggestion: "「傘」「充電器」のように物の名前が分かる形で入力してください。" },
-  timeSavingService: { suggestion: "「家事代行」のように内容が分かる名前で入力してください。" },
-  sponsorship: { suggestion: "「スポンサー枠」のように支援内容が分かる名前で入力してください。" },
-  creatorSupport: { suggestion: "「スパチャ」「投げ銭」のように支援内容が分かる名前で入力してください。" },
-  gift: { suggestion: "「プレゼント」のように内容が分かる名前で入力してください。" },
-  subscription: { suggestion: "「年会費」「Netflix」のように内容が分かる名前で入力してください。" },
-  fashionRepair: { suggestion: "「靴修理」のように修理対象が分かる名前で入力してください。" },
-  genericRepair: { suggestion: "修理対象が分かるように、もう少し具体的に入力してください。" },
-  interior: { suggestion: "「置物」「花瓶」のように種類が分かる名前で入力してください。" },
-  otherProduct: { suggestion: "商品・サービス名だけでは、金額を正当化できる具体的な理由を作れませんでした。用途や内容が分かる名前で入力してください。" },
-  otherService: { suggestion: "商品・サービス名だけでは、金額を正当化できる具体的な理由を作れませんでした。用途や内容が分かる名前で入力してください。" }
+const CATEGORY_LABELS = {
+  stationery: "文房具",
+  food: "食事",
+  transport: "移動",
+  premiumTransit: "移動",
+  vehiclePurchase: "自動車購入",
+  carMaintenance: "車の整備・修理",
+  carCustom: "車のカスタム",
+  device: "家電・デジタル",
+  repair: "修理",
+  fashion: "ファッション",
+  beauty: "美容",
+  health: "健康",
+  entertainment: "娯楽",
+  creatorSupport: "応援",
+  living: "家具・生活用品",
+  timeSavingService: "時短サービス",
+  subscription: "サブスク",
+  event: "イベント",
+  genericProduct: "一般商品",
+  genericService: "一般サービス"
 };
 
-const CATEGORY_DEFINITIONS = {
-  carMaintenance: {
-    templates: [
-      ({ item, formattedAmount }) =>
-        `${item}に${formattedAmount}は安い話ではありません。ただ、これは部品代だけではなく、故障を広げずに今の車をそのまま使い続けるための費用です。車を止める日数や別の移動手段まで考えると、後回しにする方が高くつくことがあります。`,
-      ({ item, formattedAmount }) =>
-        `${formattedAmount}の${item}は一度の支払いとしては重めです。ただ、新しく買い替える額や故障が広がったときの追加整備と比べると、今の段階で直しておく費用として整理できます。`,
-      ({ item, formattedAmount }) =>
-        `${item}に${formattedAmount}を払ったのは、見た目を変えるためではなく、普通に使える状態へ戻すためです。走れない期間や予定の組み直しまで含めて比べるなら、その場しのぎではなく運用を戻すための出費です。`
+const SUBTYPE_RULES = [
+  { subtype: "hotelLunch", category: "food", keywords: ["ホテルランチ"] },
+  { subtype: "mobileGameCharge", category: "entertainment", keywords: ["スマホゲーム課金", "ゲーム課金", "ガチャ課金"] },
+  { subtype: "pcGame", category: "entertainment", keywords: ["pcゲーム", "steam", "switchソフト", "ps5ゲーム", "ゲームソフト"] },
+  { subtype: "spacha", category: "creatorSupport", keywords: ["スーパーチャット", "super chat", "スパチャ", "投げ銭", "youtube投げ銭", "配信者支援"] },
+  { subtype: "sponsorFrame", category: "creatorSupport", keywords: ["スポンサー枠", "スポンサー費", "協賛"] },
+  { subtype: "greenCar", category: "premiumTransit", keywords: ["グリーン車", "新幹線グリーン車", "プレミアムシート", "ファーストクラス", "ビジネスクラス"] },
+  { subtype: "medicationApp", category: "subscription", keywords: ["服薬管理アプリ"] },
+  { subtype: "bicycleRepair", category: "repair", keywords: ["自転車修理"] },
+  { subtype: "wheelchairRepair", category: "repair", keywords: ["車椅子修理"] },
+  { subtype: "clockRepair", category: "repair", keywords: ["置き時計修理"] },
+  { subtype: "vehiclePurchase", category: "vehiclePurchase", keywords: ["軽自動車", "中古車", "乗用車", "車両購入", "セカンドカー", "自動車"] },
+  { subtype: "carCustom", category: "carCustom", keywords: ["車高調", "マフラー", "ホイール", "スポイラー", "ダウンサス"] },
+  { subtype: "carMaintenance", category: "carMaintenance", keywords: ["車検", "エンジン修理", "オイル交換", "タイヤ交換", "ブレーキ", "バッテリー交換", "自動車修理"] },
+  { subtype: "smartphoneRepair", category: "repair", keywords: ["スマホ修理", "iphone修理", "ipad修理", "画面修理"] },
+  { subtype: "fashionRepair", category: "repair", keywords: ["靴修理", "バッグ修理", "服修理", "置き時計修理"] },
+  { subtype: "morning", category: "food", keywords: ["モーニング"] },
+  { subtype: "seafoodBowl", category: "food", keywords: ["海鮮丼"] },
+  { subtype: "yakiniku", category: "food", keywords: ["焼肉"] },
+  { subtype: "foodGeneric", category: "food", keywords: ["寿司", "ラーメン", "ランチ", "ディナー", "定食", "海鮮", "ごはん", "食事"] },
+  { subtype: "taxi", category: "transport", keywords: ["タクシー"] },
+  { subtype: "transportGeneric", category: "transport", keywords: ["新幹線", "バス", "電車", "ガソリン", "駐車場", "移動"] },
+  { subtype: "charger", category: "device", keywords: ["充電器", "モバイルバッテリー"] },
+  { subtype: "airpods", category: "device", keywords: ["airpods pro", "airpods"] },
+  { subtype: "laptop", category: "device", keywords: ["ノートpc", "ノートパソコン", "macbook", "laptop", "ゲーミングpc", "パソコン", "pc"] },
+  { subtype: "hairOil", category: "beauty", keywords: ["ヘアオイル"] },
+  { subtype: "salon", category: "beauty", keywords: ["美容院", "ヘアサロン", "美容室"] },
+  { subtype: "gym", category: "health", keywords: ["ジム月会費", "ジム", "フィットネス"] },
+  { subtype: "seitai", category: "health", keywords: ["整体", "マッサージ"] },
+  { subtype: "movieTicket", category: "entertainment", keywords: ["映画チケット", "映画"] },
+  { subtype: "eventGeneric", category: "event", keywords: ["ライブチケット", "美術館", "コンサート", "舞台", "フェス", "イベント"] },
+  { subtype: "pencil", category: "stationery", keywords: ["鉛筆", "えんぴつ"] },
+  { subtype: "pen", category: "stationery", keywords: ["ボールペン", "シャーペン", "万年筆", "ペン"] },
+  { subtype: "hat", category: "fashion", keywords: ["帽子", "キャップ", "ハット"] },
+  { subtype: "coat", category: "fashion", keywords: ["コート", "ジャケット", "デニム", "服"] },
+  { subtype: "bag", category: "fashion", keywords: ["バッグ", "カバン", "リュック", "トート"] },
+  { subtype: "sneakers", category: "fashion", keywords: ["スニーカー", "靴"] },
+  { subtype: "chair", category: "living", keywords: ["椅子", "チェア"] },
+  { subtype: "mug", category: "living", keywords: ["マグカップ", "コップ", "カップ"] },
+  { subtype: "umbrella", category: "living", keywords: ["傘"] },
+  { subtype: "housekeeping", category: "timeSavingService", keywords: ["家事代行", "掃除代行", "時短サービス"] },
+  { subtype: "subscriptionGeneric", category: "subscription", keywords: ["月会費", "月額", "サブスク", "netflix", "spotify", "amazon prime", "youtube premium"] },
+  { subtype: "dailyGoods", category: "living", keywords: ["フライパン", "収納箱", "食器", "キッチン用品", "家具", "収納"] }
+];
+
+const CATEGORY_FALLBACKS = {
+  stationery: "pencil",
+  food: "foodGeneric",
+  transport: "transportGeneric",
+  premiumTransit: "greenCar",
+  vehiclePurchase: "vehiclePurchase",
+  carMaintenance: "carMaintenance",
+  carCustom: "carCustom",
+  device: "laptop",
+  repair: "smartphoneRepair",
+  fashion: "coat",
+  beauty: "salon",
+  health: "seitai",
+  entertainment: "pcGame",
+  creatorSupport: "spacha",
+  living: "chair",
+  timeSavingService: "housekeeping",
+  subscription: "subscriptionGeneric",
+  event: "eventGeneric"
+};
+
+const TEMPLATE_MAP = {
+  pencil: {
+    low: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、書きにくい一本を我慢するより安いです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、手元が少し気持ちよくなる料金としては軽いです。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、なくさず最後まで使えば普通に勝ちです。`
+    ],
+    normal: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、毎回ちょっと書きやすいなら地味に回収できます。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、文房具というより手元の小改善代です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気ですが、書くたび気分が少し上がるなら話せます。`
+    ],
+    high: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、もう文房具というより趣味です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、書く機能より持っていたい気持ちに払っています。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、ここまで来ると完全に手元のロマン代です。`
+    ],
+    extreme: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、文房具代ではなくコレクション代です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、書くためより眺めるための買い物です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。もう鉛筆の顔をした趣味として処理します。`
     ]
   },
-  carCustom: {
-    templates: [
-      ({ item, formattedAmount }) =>
-        `${item}に${formattedAmount}は高額ですが、単に飾りへ払ったわけではありません。車高や音や乗り味を自分の狙いに合わせる部品なら、安い物を入れて不満が残り、結局やり直すより最初から目的に合う物を選ぶ方が筋は通ります。`,
-      ({ item, formattedAmount }) =>
-        `${formattedAmount}の${item}は趣味の出費に見えますが、実際は見た目と乗り味をまとめて調整する費用です。純正のまま我慢して別の部品を足していくより、一回で狙いを決めた方が再作業や買い直しを減らせます。`,
-      ({ item, formattedAmount }) =>
-        `${item}に${formattedAmount}を払ったのは、必要最低限を超えた調整だからこそ金額が乗っています。ただ、目的に合わない部品を何度も試すより、最初から条件に合う物へまとめて払う方が結果は素直です。`
+  pen: {
+    low: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、インクが出ない一本を振り続ける時間より安いです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、ちゃんと書けるだけで十分仕事をしています。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、最後まで使い切れた時点で普通に元は取れます。`
+    ],
+    normal: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、毎回触る物として見ればまだ話せます。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、書くたび小さく機嫌が直る持ち物代です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、安いペンを買い直す面倒を止めたと思えばまだ自然です。`
+    ],
+    high: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、インク代ではなく持ち物代です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで来ると、字を書く機能より所有感に払っています。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、仕事道具というより気分の装備です。`
+    ],
+    extreme: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、字を書くためではなく高い物で字を書くための買い物です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、もう筆記具ではなく趣味の証拠です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。実用品ではなく完全にロマン枠です。`
+    ]
+  },
+  morning: {
+    low: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、朝を自分で立て直す料金としては軽いです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、寝ぼけたまま何とか始動した代としては安いです。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、朝の段取りを一回省いた料金として話せます。`
+    ],
+    normal: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、朝の席代まで込みならまだ分かります。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、朝食というより朝を整えた費用です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、食事代と場所代をまとめて払ったと思えばまだ自然です。`
+    ],
+    high: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。その日は朝食より朝イベントでした。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、朝を食べたというより朝に張り切りすぎています。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は普通の朝食ではありません。朝から何かをやり切った料金です。`
+    ],
+    extreme: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は朝食ではありません。朝から大きなことをした料金です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、もうモーニングではなくネタです。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高すぎますが、その日の朝を忘れない費用にはなります。`
+    ]
+  },
+  seafoodBowl: {
+    low: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、魚を切って片付けるより話が早いです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、満足まで一直線ならむしろ手早いです。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、食べたい物に最短で着地した代としては自然です。`
+    ],
+    normal: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、食事代というより魚の面倒を全部省いた料金です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、自分で寄せ集めるより一発で終わる方が楽です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高すぎるほどではなく、満足を早く買った感じです。`
+    ],
+    high: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、その日は昼食というよりご褒美寄りです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、味だけでなく気分転換まで込みで払っています。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、普通の丼より今日はこれでいい日にした料金です。`
+    ],
+    extreme: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は食事代ではなくネタ代です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、昼食の顔をしたイベントです。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。味より記憶に残す方向の出費です。`
+    ]
+  },
+  yakiniku: {
+    low: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、焼く手間まで任せた料金としては普通です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、その場で満足して終われるなら安い方です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、肉を食べたい気分を即終了させた代です。`
+    ],
+    normal: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、食事代というよりその場のイベント代です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、家で煙を出さずに済んだ分も込みです。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、焼くところまで外注したと思えばまだ話せます。`
+    ],
+    high: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、その日は食事ではなくイベントだったことにします。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、肉代というより今日はこういう日だ代です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気です。でも普通の夕飯と比べる段階はもう過ぎています。`
+    ],
+    extreme: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は夕飯ではありません。完全に出来事です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、焼肉の形をした記念日です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。食事代ではなく話のネタ代として整理します。`
+    ]
+  },
+  foodGeneric: {
+    low: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、空腹をすぐ止めた料金としては軽いです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、自分で段取りするより早く終わります。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、一回ちゃんと満足した時点で十分です。`
+    ],
+    normal: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、食事と手間をまとめて払った感じです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、作るより早く終わるならまだ自然です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、その場で完結したならまあ話せます。`
+    ],
+    high: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。その日は食事というよりイベント寄りです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、味だけでなく気分転換にも払っています。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、普通の昼食と比べる段階はもう過ぎています。`
+    ],
+    extreme: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は食事代ではなくネタ代です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、完全に食べるイベントです。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。味より記憶に残す方向の出費です。`
+    ]
+  },
+  taxi: {
+    low: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、歩かずに済んだ時間込みです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、迷う時間を金で止めたと思えば早いです。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、しんどい移動を一回ショートカットした代です。`
+    ],
+    normal: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、乗り換えを消した料金だと思えば分かります。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、荷物と疲れをまとめて運んでもらった感じです。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、歩く気力がない日に時間を買った代としては自然です。`
+    ],
+    high: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、予定を崩さない費用だと思えばまだ話せます。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、移動代というより体力温存費です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気です。でもその分、着いた後にまだ動けます。`
+    ],
+    extreme: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}はかなり高いです。移動そのものを丸ごと買った感じです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、運賃より今日は楽を買っています。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、予定を守る罰金だと思えばまだ整理できます。`
+    ]
+  },
+  greenCar: {
+    low: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、少し静かに移動する料金としてはまだ穏やかです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、座る場所を整えた分としては話せます。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、移動で消える元気を少し守る代です。`
+    ],
+    normal: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、ぜいたくというより移動で削れないための費用です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、座席代ではなく到着後にちゃんと動くための料金です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めでも、移動でぐったりしないなら十分話せます。`
+    ],
+    high: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、目的地で使い物になるなら必要経費寄りです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、移動の快適さより到着後の自分に払っています。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気です。でも移動で一日終わるよりは安いです。`
+    ],
+    extreme: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}はかなり高いです。もう移動というより体力の保全費です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、席代より疲れない権利代です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、目的地で潰れないなら理屈は立ちます。`
+    ]
+  },
+  transportGeneric: {
+    low: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、移動の面倒を少し消した代としては軽いです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、歩く時間を削ったと思えば早いです。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、迷わず着いた時点で十分元は取れます。`
+    ],
+    normal: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、移動費というより時間を買った感じです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、荷物と疲れを減らした代としては自然です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めでも、予定を崩さないならまあ話せます。`
+    ],
+    high: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、移動後にまだ動けるなら意味はあります。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、運賃というより体力温存費です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気です。でも移動で消耗し切るよりはましです。`
+    ],
+    extreme: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}はかなり高いです。今日は移動を丸ごと外注しています。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、交通費より予定維持費の顔です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、時間も体力も守る方に振った出費です。`
     ]
   },
   vehiclePurchase: {
-    templates: [
-      ({ item, formattedAmount }) =>
-        `${item}に${formattedAmount}は、購入価格だけを見るとむしろ低く見えることがあります。ただ、判断材料は本体価格ではなく、車検や修理費まで含めた総額です。日常の移動に使えてタクシーやレンタカーを減らせる状態なら、移動手段を確保する初期費用として説明できます。`,
-      ({ item, formattedAmount }) =>
-        `${formattedAmount}の${item}は、安いから得だと決められる金額ではありません。ただ、維持費と修理費を確認したうえで使えるなら、同額を一時的な移動サービスに払うより、手元に移動手段が残る点で合理性があります。`,
-      ({ item, perDay3Years, formattedAmount }) =>
-        `${formattedAmount}の${item}は一度の支払いとしては判断しづらいですが、3年間使う前提なら1日あたり${perDay3Years}です。通勤や荷物運搬など複数用途に回せて、最後に売却できる余地まであるなら、使用期間で費用を分散する考え方は十分成り立ちます。`
+    low: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は安いです。本番は修理費ですが、動けば移動手段としては強いです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、車両価格より維持費の確認が先です。それでも使えれば話は立ちます。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、安いから即得ではありません。ただ動けばタクシー数回分より自由です。`
+    ],
+    normal: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、購入額だけでなく総額で見る買い物です。それでも移動を一本化できるなら自然です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、維持費込みで考えても荷物や時間帯の自由が残ります。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、通勤や送迎や買い物をまとめられるなら説明できます。`
+    ],
+    high: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。移動費だけでなく、好きで持つ分も入っています。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、タクシーやレンタカーとの比較だけでは片付きません。趣味枠もあります。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気ですが、使う期間で割ると移動手段を持つ意味はまだ残ります。`
+    ],
+    extreme: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は移動だけでは説明しきれません。完全に好きな物としての比率も高いです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、維持費込みの総額で向き合う買い物です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。ただ売却や使用期間まで含めて見る買い物ではあります。`
     ]
   },
-  transport: {
-    templates: [
-      ({ item, formattedAmount }) =>
-        `${item}に${formattedAmount}は、安い移動手段と比べれば高く見えます。ただ、乗り換えや徒歩を減らして予定どおり着けるなら、移動代というより時間と手間をまとめて処理する費用として説明できます。`,
-      ({ item, formattedAmount }) =>
-        `${formattedAmount}の${item}は地味な支出ですが、遅刻のリスクや到着までの消耗を減らすなら話は変わります。別の経路で余計に時間を使うくらいなら、その差額で予定を守ったと考える方が自然です。`,
-      ({ item, formattedAmount }) =>
-        `${item}に${formattedAmount}を出したのは、ただ移動するためではなく、その後の予定まで崩さないためです。安さだけで選んで乗り換えや待ち時間が増えるなら、差額で段取りを買ったと見る方が筋が通ります。`
+  carMaintenance: {
+    low: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、動かなくなる前に払った代としては安いです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、後で大きく壊すよりずっと話が早いです。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、車を止めないための小さい出費として自然です。`
+    ],
+    normal: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、動かない日を作らないための費用です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、今ある車を使い続けるための必要経費として通ります。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、買い替えの話になる前に止めた料金と思えばまだましです。`
+    ],
+    high: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、車を買い替える話よりは小さく済む可能性があります。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、修理費というより延命費として見る方がしっくりきます。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は痛いですが、ここで止めれば総額が暴れすぎずに済みます。`
+    ],
+    extreme: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}はかなり高いです。それでも車両入れ替えより小さいならまだ話せます。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、修理費というより今の車を続投させる判断です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、ここまで直すなら使い切る前提の出費です。`
     ]
   },
-  premiumTransit: {
-    templates: [
-      ({ item, formattedAmount }) =>
-        `${item}に${formattedAmount}は高く見えますが、席の差に払ったというより、移動で体力を削らないための費用です。着いたあとに仕事や予定があるなら、安い席との差額で使える状態を買ったと考えた方が自然です。`,
-      ({ item, formattedAmount }) =>
-        `${formattedAmount}の${item}は普通席より上に見えますが、目的地でぐったりして動けなくなるなら節約の意味が薄れます。移動時間を休憩に近づけられるなら、その差額は贅沢というより準備費です。`,
-      ({ item, formattedAmount }) =>
-        `${item}に${formattedAmount}を足したのは、見栄ではなく移動後のコンディションを守るためです。到着後にそのまま動く前提なら、移動で消耗する方があとで高くつくので、この差額には十分理由があります。`
+  carCustom: {
+    low: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、少額で見た目か感触を変えた代としてはありです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、触るたび気付ける変化ならまだ軽いです。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、車を少しだけ自分寄りにした料金として話せます。`
+    ],
+    normal: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、安物を何度も試すより一回で決めた感じです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、移動費ではなく趣味代として処理するのが素直です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、車を見るたび回収するタイプの出費です。`
+    ],
+    high: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、気になる状態を長く引きずるより早いです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、移動手段より趣味の装備として払っています。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気です。でも見るたび納得できるなら回収先はあります。`
+    ],
+    extreme: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は完全に移動費ではありません。車趣味の本体です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、純正で我慢する費用を先払いした感じです。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。合理性より満足を優先した枠です。`
     ]
   },
-  travelStay: {
-    templates: [
-      ({ item, formattedAmount }) =>
-        `${item}に${formattedAmount}は安くありません。ただ、宿代や移動代を別々に見るより、その日その場所で時間を確保する費用として見た方が実態に近いです。日帰りで詰め込んで疲れるより、滞在ごとまとめて整えた支出と考えれば筋は通ります。`,
-      ({ item, formattedAmount }) =>
-        `${formattedAmount}の${item}は一度の出費としては大きめです。ただ、移動を急ぎ足で詰める代わりに滞在時間を確保できるなら、交通のやりくりや予定の無理を減らす費用として説明できます。`,
-      ({ item }) =>
-        `${item}は物として残る支出ではありませんが、あとから同じ条件で取り直せるとは限りません。日程と場所を押さえて無理のない動き方ができたなら、単なる気晴らしではなく機会を確保した費用です。`
+  charger: {
+    low: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、充電できない時間の方が面倒です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、ケーブルを探してイライラするより安いです。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、不便を一個消した代としては軽いです。`
+    ],
+    normal: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、毎回ちゃんと使えるなら話せます。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、安い物を買い直す未来を先に止めた感じです。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、充電待ちの面倒を減らした料金としてはまだ自然です。`
+    ],
+    high: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。ここまで来ると充電器というよりガジェット趣味です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、電気を入れる道具より満足感に払っています。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気ですが、毎日目に入る機械としてはまだ説明できます。`
+    ],
+    extreme: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、電気を入れる道具の値段ではありません。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、完全に充電器の顔をした趣味です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。便利さより所有欲の比率が高いです。`
     ]
   },
-  food: {
-    templates: [
-      ({ item, formattedAmount }) =>
-        `${item}に${formattedAmount}は、食事代だけとして見れば高く出ることがあります。ただ、場所の確保やその場で使う時間まで一緒に払っているなら、単品のごはん代だけで比べるのは雑です。食事と時間を一か所で済ませた費用として見る方が自然です。`,
-      ({ item, formattedAmount }) =>
-        `${formattedAmount}の${item}は料理だけを見ると強めです。ただ、別の店へ移動したり、落ち着ける場所を別で取ったりする手間まで考えると、一回で完結する支払いとして説明できます。`,
-      ({ item, formattedAmount }) =>
-        `${item}に${formattedAmount}は安くありません。ただ、複数人分やコース料金まで含まれる支払いなら、一人分の普段の食事と単純比較はできません。少なくとも、食べ物だけに払ったと決めつけるのは早いです。`
+  airpods: {
+    low: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、耳まわりを少し楽にした代としては軽いです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、配線の面倒を消した料金として話せます。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、一日の小さな雑音を減らす代としては自然です。`
+    ],
+    normal: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、毎日耳につけるならまだ説明できます。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、イヤホン代というより騒音を少し消す料金です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、使うたび配線ストレスが消えるなら十分話せます。`
+    ],
+    high: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、毎日使う時間が長いなら回収先はあります。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、音だけでなく面倒の少なさにも払っています。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気です。でも耳まわりが快適になるなら納得しやすいです。`
+    ],
+    extreme: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。イヤホンというより快適さの装備です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、音より使い勝手に払う比率が大きいです。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気ですが、毎日触る物としてはまだ筋は通ります。`
     ]
   },
-  shoes: {
-    templates: [
-      ({ item, perUse100 }) =>
-        `${item}を100回履くと仮定すれば1回あたり${perUse100}です。よく履く一足なら、靴箱で眠る物ではなく外出のたびに使う前提なので、1回ごとの負担で見るとそこまで無茶な金額ではありません。`,
-      ({ item, perDay1Year }) =>
-        `${item}を1年間使う前提なら、1日あたり${perDay1Year}です。足に合わない靴を何足も試したり、結局履かない一足を増やしたりするより、出番の多い靴を一足決める費用と考える方がわかりやすいです。`,
-      ({ item, formattedAmount }) =>
-        `${item}に${formattedAmount}は高く見えても、ただの靴代で終わる話ではありません。合わせやすくてよく履けるなら、安い靴を買って結局履かない失敗より、最初から出番の多い一足を選ぶ方が無駄が少ないです。`
+  laptop: {
+    low: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、不便を一個減らした料金としては軽いです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、待ち時間にイライラしないだけでも十分です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、機械の機嫌を取る時間を減らした代です。`
+    ],
+    normal: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、毎日使う時間が長いならまだ自然です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、安い機械を買い直すより一台で済ませたい出費です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、作業待ちを減らした料金としては十分説明できます。`
+    ],
+    high: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、待ち時間にキレないための費用と思えばまだ話せます。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、性能だけでなく毎日のストレス減にも払っています。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気です。でも長く触る機械なら安物より筋が通ります。`
+    ],
+    extreme: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。実用品と趣味の境目に立っています。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、性能と満足感の合算で考える買い物です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気ですが、毎日使う道具としてはまだ説明可能です。`
     ]
   },
-  fashionWear: {
-    templates: [
-      ({ item, perDay1Year }) =>
-        `${item}を1年間使う前提なら、1日あたり${perDay1Year}です。よく着る服は見た目だけでなく、毎回の組み合わせを早く決める役目もあるので、出番が多いなら1日ごとの負担はそこまで重くありません。`,
-      ({ item, perDay3Years }) =>
-        `3年間残せる前提なら、${item}は1日あたり${perDay3Years}です。流行だけで終わらず、毎年出せる定番に近い服なら、安い物を買い足して迷うより整理しやすい買い物です。`,
-      ({ item, formattedAmount }) =>
-        `${item}に${formattedAmount}を出したのは、見た目に払ったというより、着回しを減らさずに済む一枚を確保するためです。合わせにくい服を増やすより、登場回数が読める服へ寄せた方が金額の説明はしやすいです。`
+  smartphoneRepair: {
+    low: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、新しい端末を探す手間より軽いです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、使えない時間を短くした料金として自然です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、設定し直しを避けた代として十分話せます。`
+    ],
+    normal: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、買い替えよりまだ小さく済む話です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、今の環境をそのまま延命した料金です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、データ移行の面倒を回避したと思えばまだ安いです。`
+    ],
+    high: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、新品探しより早く戻るなら意味があります。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、修理費というより今の生活を止めない代です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気です。でも環境を作り直すよりは筋が通ります。`
+    ],
+    extreme: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。買い替えと比べて初めて判断する帯です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、修理費より継続費の顔になっています。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気ですが、今の端末に残したい環境があるなら話せます。`
     ]
   },
-  bag: {
-    templates: [
-      ({ item, perDay1Year }) =>
-        `${item}を1年間使う前提なら、1日あたり${perDay1Year}です。通勤と休日の両方で回せて、毎回の荷物の入れ替えが減るなら、持ち物を一本化する費用としてはそこまで重くありません。`,
-      ({ item, formattedAmount }) =>
-        `${item}に${formattedAmount}は安くありません。ただ、服に合わせやすくて毎回これで済むなら、用途ごとに中途半端な物を足していくより管理が楽です。買い分けと買い直しを減らせるなら、その金額にも理由が付きます。`,
-      ({ item, perUse100 }) =>
-        `${item}を100回使うと仮定すれば1回あたり${perUse100}です。荷物がまとまって、服に合わせやすくて、毎回これで済むなら、使うたびに迷わない分まで含めて十分説明できる金額です。`
+  bicycleRepair: {
+    low: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、新車を見る前に止められる額です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、押して帰る未来を避けた代としては軽いです。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、また普通に乗れる時点で十分話せます。`
+    ],
+    normal: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、買い直すよりはだいぶ穏やかです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、今ある一台を続投させる料金として自然です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、移動手段を止めないための費用として話せます。`
+    ],
+    high: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、また探し直すより話が早いなら十分です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、修理費というより買い直し回避費です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気です。でも乗れる状態に戻るなら筋は通ります。`
+    ],
+    extreme: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。新品比較まで入れて考える帯です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、延命というより続投判断です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気ですが、使い慣れた移動手段を残す費用ではあります。`
     ]
   },
-  fashionAccessory: {
-    templates: [
-      ({ item, formattedAmount }) =>
-        `${item}に${formattedAmount}は安くありません。ただ、服全体の印象を一つでまとめやすくて、他の小物を増やさずに済むなら、単なる飾りではなく組み合わせを整える費用として説明できます。`,
-      ({ item, perDay3Years }) =>
-        `3年間残せる前提なら、${item}は1日あたり${perDay3Years}です。服より入れ替え頻度が低い物なら、長く使って全体の印象を安定させる前提はそこまで不自然ではありません。`,
-      ({ item, formattedAmount }) =>
-        `${formattedAmount}の${item}は一見すると小物代ですが、服を何枚も足さなくても印象を整えられるなら、見た目をまとめるための近道として十分筋が通ります。`
+  wheelchairRepair: {
+    low: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、動きづらさを先に止めた代としては軽いです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、そのまま我慢するより話が早いです。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、また普通に使える時点で十分です。`
+    ],
+    normal: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、使えない時間を増やさない費用として自然です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、買い直しより今の状態を戻す方が話しやすいです。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、使い慣れた物を止めないための料金です。`
+    ],
+    high: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、必要な物をそのまま使い続ける費用としては筋が通ります。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、修理費というより使える状態の維持費です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気です。でも使えない時間を延ばすよりは自然です。`
+    ],
+    extreme: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。買い替え比較まで入れて考える帯です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、修理というより継続利用の判断です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気ですが、使える状態を保つ費用としては説明できます。`
     ]
   },
-  beautyProduct: {
-    templates: [
-      ({ item, formattedAmount }) =>
-        `${item}に${formattedAmount}は高く見えても、毎回少量ずつ使う前提なら一度の支払いだけでは判断しにくいです。合わない物を何本も試すより、使い切れる物を一つ決めた方が出費が散りません。`,
-      ({ item, formattedAmount }) =>
-        `${formattedAmount}の${item}は消耗品なので長期計算はしません。ただ、仕上がりが安定して買い直しや失敗を減らせるなら、日々の手間込みで説明できます。`,
-      ({ item, formattedAmount }) =>
-        `${item}に${formattedAmount}を出したのは、ぜいたく品というより毎回の仕上がりを揃えるためです。安い物を渡り歩くより、自分に合う物を固定した方が結局ラクです。`
-    ]
-  },
-  beautyService: {
-    templates: [
-      ({ item, formattedAmount }) =>
-        `${item}に${formattedAmount}は安くありませんが、切ること自体より、整えてしばらく持たせるところまで含めた費用です。短い周期で崩れてまた行くより、先に少し整えておく方が結果的に楽です。`,
-      ({ item, formattedAmount }) =>
-        `${formattedAmount}の${item}は一回の支払いとしては大きくても、見た目を整えるだけでなく毎朝のセットのしやすさまで変わるなら、単なるその場の出費ではありません。`,
-      ({ item, formattedAmount }) =>
-        `${item}に${formattedAmount}を払ったのは、切る作業ではなく、扱いやすい状態を買うためです。あとで毎日時間がかかる状態を避けられるなら、この支払いは普通に回収しやすいです。`
-    ]
-  },
-  healthDevice: {
-    templates: [
-      ({ item, perDay1Year }) =>
-        `${item}を1年間使う前提なら、1日あたり${perDay1Year}です。体を整える用途がはっきりしている物なら、必要なときにすぐ使える分、通う手間との比較で十分話が通ります。`,
-      ({ item, formattedAmount }) =>
-        `${formattedAmount}の${item}は安くありませんが、通う回数を少し減らせたり、自宅でこまめに使えたりするなら、単体の値段だけで見るより話しやすいです。`,
-      ({ item, formattedAmount }) =>
-        `${item}に${formattedAmount}を払ったのは、物を増やすためではなく、自宅で体の状態を整える手段を持つためです。必要なときにすぐ使えるなら、通う手間との比較で十分説明できます。`
-    ]
-  },
-  healthApp: {
-    templates: [
-      ({ item, formattedAmount }) =>
-        `${item}に${formattedAmount}を出したのは、アプリそのものより、記録や管理を続けやすくするためです。手書きや自己流で抜けるより、続く仕組みへ払う方が理屈は通ります。`,
-      ({ item, perDay1Year }) =>
-        `${item}を1年間使う前提なら、1日あたり${perDay1Year}です。記録や服薬管理の抜け漏れを減らせるなら、その単価で管理のミスを減らせる仕組みとして十分説明できます。`,
-      ({ item, formattedAmount }) =>
-        `${formattedAmount}の${item}は形に残りませんが、忘れや抜けを防ぐ仕組みとして使うなら、アプリ代というより管理コストです。`
-    ]
-  },
-  healthService: {
-    templates: [
-      ({ item, formattedAmount }) =>
-        `${item}に${formattedAmount}は安くありませんが、体を整えて終わりではなく、その後の動きやすさまで含めた費用です。重さや張りを引きずる時間が減るなら、仕事や日常へ返ってくる分まで考えてよい出費です。`,
-      ({ item, formattedAmount }) =>
-        `${formattedAmount}の${item}は一回の支払いでも、体が整って仕事や日常が回しやすくなるなら、単なる贅沢とは言いにくいです。つらいまま数日引きずる方が、結果として損が大きくなりがちです。`,
-      ({ item, formattedAmount }) =>
-        `${item}に${formattedAmount}を払ったのは、その場の気分ではなく、体の重さを引きずらないためです。あとで動ける時間が増えるなら、この出費は十分回収を狙えます。`
-    ]
-  },
-  healthSubscription: {
-    templates: [
-      ({ item, formattedAmount }) =>
-        `${item}に${formattedAmount}を払うのは固定費に見えますが、体を動かす機会を先に確保する費用だと思えば自然です。行くたびに都度判断するより、先に枠を持つ方が続けやすいことがあります。`,
-      ({ periodLabel, unitCost }) =>
-        periodLabel && unitCost
-          ? `${periodLabel}${unitCost}です。続ける前提の健康管理なら、必要になるたびに単発で迷うより、このくらいの単価で使える状態を持つ方が管理しやすいです。`
-          : "",
-      ({ item, formattedAmount }) =>
-        `${formattedAmount}の${item}は積み上がると大きく見えても、体調を崩して動けない日を増やす方が面倒です。先に動く環境へ払っておく理屈はあります。`
-    ]
-  },
-  gameMicrotransaction: {
-    templates: [
-      ({ item, formattedAmount }) =>
-        `${item}に${formattedAmount}は形に残りませんが、比較する相手は他の娯楽です。外に出る遊びなら交通費や飲食代がかかることを考えると、娯楽予算の中で完結しているなら特別に高い支出とは言い切れません。`,
-      ({ item, formattedAmount }) =>
-        `${formattedAmount}の${item}は使い切りに見えても、外出を伴う遊びと比べるべきお金です。別の娯楽ならその都度追加の支出が乗るので、この額だけを切り出して極端と決めるのは早いです。`,
-      ({ item, formattedAmount }) =>
-        `${item}に${formattedAmount}を入れたのは、物を残すためではなく娯楽予算の使い道としてです。外で一回遊ぶたびに交通費や飲食費が増えることと比べるなら、月内で収まる範囲の課金として整理できます。`
-    ]
-  },
-  medicalCare: {
-    templates: [
-      ({ item, formattedAmount }) =>
-        `${item}に${formattedAmount}は安くありませんが、体調を悪化させないための費用なので、後回しにして長引かせる方が面倒です。早めに対処して生活を戻すなら必要な出費です。`,
-      ({ item, formattedAmount }) =>
-        `${formattedAmount}の${item}は気軽な額ではなくても、症状を引きずって時間や体力を削る方が負担です。生活を普通に戻すための費用と考えれば筋は通ります。`,
-      ({ item, formattedAmount }) =>
-        `${item}に${formattedAmount}を払ったのは、贅沢ではなく不調を長引かせないためです。悪化して通院や薬が増えるより、早めに整える方が合理的です。`
-    ]
-  },
-  insurance: {
-    templates: [
-      ({ item, formattedAmount }) =>
-        `${item}に${formattedAmount}を払うのは、使わない月ほどもったいなく見えます。ただ、高額な出費が一度でも来たときの振れ幅を小さくする費用だと考えれば、毎月の固定費としては説明がつきます。`,
-      ({ item, formattedAmount }) =>
-        `${formattedAmount}の${item}は何も起きないと損に見えますが、実際は大きい支出を自分だけで抱えないための仕組みです。低頻度でも重いリスクに備える費用なら、単純な回数計算にはなりません。`,
-      ({ periodLabel, unitCost }) =>
-        periodLabel && unitCost
-          ? `${periodLabel}${unitCost}です。使わない日の方が多い仕組みでも、高額な一回を避けるための固定費と見れば整理しやすいです。`
-          : ""
-    ]
-  },
-  homeDevice: {
-    templates: [
-      ({ item, perDay3Years }) =>
-        `3年間使えれば、${item}は1日あたり${perDay3Years}です。毎日使う機器なら、一度の金額より日々の負担で見た方が自然です。`,
-      ({ item, formattedAmount }) =>
-        `${formattedAmount}の${item}は高く見えても、毎日触る機器なら時間と手間に返ってきます。安い物で不満を抱え続けるより、使うたびに差が出る方へ寄せるのは普通です。`,
-      ({ item, formattedAmount }) =>
-        `${item}に${formattedAmount}を出したのは、物を増やすためではなく、日々の動線や作業を整えるためです。頻繁に使う前提なら、単価の大きさだけでは判断しにくいです。`
-    ]
-  },
-  homeRepair: {
-    templates: [
-      ({ item, formattedAmount }) =>
-        `${item}に${formattedAmount}を払ったのは、新しく買い替える費用と比べて、今ある物を使い続けるためです。データや設定のやり直しまで含めれば、修理の方が軽い話で済むことがあります。`,
-      ({ item, formattedAmount }) =>
-        `${formattedAmount}の${item}は高く見えても、買い替えと初期設定の手間、使えない期間まで考えると、今の環境を維持する費用としては合理的です。`,
-      ({ item, formattedAmount }) =>
-        `${item}に${formattedAmount}を出したのは、故障そのものより、使えない時間を短くするためです。代替品を買うより早く戻せるなら、修理代として筋が通ります。`
-    ]
-  },
-  workTool: {
-    templates: [
-      ({ item, formattedAmount }) =>
-        `${item}に${formattedAmount}は高く見えても、作業時間ややり直しを減らせる道具なら、ただの物欲ではありません。使う回数があるほど、差はそのまま効率に返ってきます。`,
-      ({ item, formattedAmount }) =>
-        `${formattedAmount}の${item}は気軽に買う額ではなくても、外注や作業遅延と比べると話が変わります。自分で処理できる回数が増えるなら、十分元を取りやすいです。`,
-      ({ item, perDay3Years }) =>
-        `3年間使えれば、${item}は1日あたり${perDay3Years}です。仕事や作業で繰り返し使う道具なら、一度の出費より継続して削れる手間で見た方が合理的です。`
-    ]
-  },
-  gameEntertainment: {
-    templates: [
-      ({ item, formattedAmount }) =>
-        `${item}に${formattedAmount}は物として残るとはいえ、比較する相手は他の娯楽です。外出を伴う遊びなら交通費や飲食代が乗ることを考えると、遊ぶ時間まで含めて特別高いとは限りません。`,
-      ({ item, formattedAmount }) =>
-        `${formattedAmount}の${item}は一回の出費としては強めでも、継続して遊べるなら時間単価の見え方は変わります。娯楽予算の中で回るなら不自然な支出ではありません。`,
-      ({ item, formattedAmount }) =>
-        `${item}に${formattedAmount}を払ったのは、ただの物代ではなく遊ぶ時間をまとめて買うためです。別の遊びを毎回外で済ませるより支出が膨らまないなら、十分説明できます。`
-    ]
-  },
-  event: {
-    templates: [
-      ({ item, formattedAmount }) =>
-        `${item}に${formattedAmount}は物が残らない支出ですが、その日その場所でしか得られない情報や体験が目的なら、後から同じ条件で買い直せません。限定された機会に払う費用として見れば筋は通ります。`,
-      ({ item, formattedAmount }) =>
-        `${formattedAmount}の${item}は高く見えても、移動と入場をまとめた一回限りの機会なら、一般的な日用品と同じ尺度では比べにくいです。`,
-      ({ item, formattedAmount }) =>
-        `${item}に${formattedAmount}を出したのは、物を残すためではなく、あとから代替しにくい接点を取りにいくためです。開催日が限られる以上、先送りできない種類の支出です。`
-    ]
-  },
-  dailyGoods: {
-    templates: [
-      ({ item, formattedAmount }) =>
-        `${item}に${formattedAmount}を出したのは、毎日使う消耗品として手間を減らすためです。合わない物を何度も買い直すより、用途に合う物を選んだ方が結局散らかりません。`,
-      ({ item, formattedAmount }) =>
-        `${formattedAmount}の${item}は消耗品なので長期計算はしません。ただ、毎日使う物ほど使い勝手の差が積み重なるので、単価だけでは決めにくいです。`,
-      ({ item, formattedAmount }) =>
-        `${item}に${formattedAmount}は高く見えても、日常の作業を止めずに済んで失敗や買い直しを減らせるなら、十分説明のつく支出です。`
-    ]
-  },
-  stationery: {
-    templates: [
-      (data) => buildStationeryExcuse(data, 0),
-      (data) => buildStationeryExcuse(data, 1),
-      (data) => buildStationeryExcuse(data, 2)
-    ]
-  },
-  kitchenGoods: {
-    templates: [
-      (data) => buildKitchenGoodsExcuse(data, 0),
-      (data) => buildKitchenGoodsExcuse(data, 1),
-      (data) => buildKitchenGoodsExcuse(data, 2)
-    ]
-  },
-  furniture: {
-    templates: [
-      (data) => buildFurnitureExcuse(data, 0),
-      (data) => buildFurnitureExcuse(data, 1),
-      (data) => buildFurnitureExcuse(data, 2)
-    ]
-  },
-  generalHouseholdItem: {
-    templates: [
-      (data) => buildGeneralHouseholdExcuse(data, 0),
-      (data) => buildGeneralHouseholdExcuse(data, 1),
-      (data) => buildGeneralHouseholdExcuse(data, 2)
-    ]
-  },
-  timeSavingService: {
-    templates: [
-      ({ item, formattedAmount }) =>
-        `${item}に${formattedAmount}を払ったのは、面倒を外に出して空いた時間を戻すためです。自分でやると数時間かかる作業なら、その時間ごと買い戻したと考える方が自然です。`,
-      ({ item, formattedAmount }) =>
-        `${formattedAmount}の${item}は贅沢に見えても、あとで片づける負担ややり残しを減らせるなら話が変わります。時間を空けて本来の用事に回せるなら、十分合理的です。`,
-      ({ item, formattedAmount }) =>
-        `${item}に${formattedAmount}を出したのは、手抜きではなく優先順位の整理です。自分で抱えるより早く終わって他の予定を守れるなら、その差額には意味があります。`
-    ]
-  },
-  sponsorship: {
-    templates: [
-      ({ item, formattedAmount }) =>
-        `${item}に${formattedAmount}は、商品を受け取る支払いではないので高く見えます。ただ、広告枠や支援先との接点、現場で何が起きるかを見る機会まで含まれるなら、単なる寄付とは整理が違います。`,
-      ({ item, formattedAmount }) =>
-        `${formattedAmount}の${item}は一見すると大きいですが、通常の広告費や協賛費と比べるべき支出です。名前が出る場や学べる場があるなら、応援だけで終わる話ではありません。`,
-      ({ item, formattedAmount }) =>
-        `${item}に${formattedAmount}を払ったのは、気持ちだけではなく接点を作るためです。活動の継続に関わりつつ、広報や関係づくりの経験まで乗るなら、単なる持ち出しではありません。`
-    ]
-  },
-  creatorSupport: {
-    templates: [
-      ({ item, formattedAmount }) =>
-        `${item}に${formattedAmount}は、一般的な娯楽費としては大きい金額です。ただ、商品代ではなく、配信活動への支援とメッセージを届ける機能に払った費用です。応援予算の範囲で、細かな投げ銭を重ねる代わりに一度で支援したなら、用途を限定した支出として整理できます。`,
-      ({ item, formattedAmount }) =>
-        `${formattedAmount}の${item}は物として残りません。ただ、配信を見るだけではなく、活動費へ直接回る支援として払ったなら、単なる衝動買いとは切り分けられます。スポンサー費や他の娯楽費と比べて年間予算の中に収まるなら、説明の筋は通ります。`,
-      ({ item, formattedAmount }) =>
-        `${item}に${formattedAmount}を出したのは、物を受け取るためではなく、配信への支援をまとめて示すためです。少額を何度も送るより応援予算を最初に区切って管理する形なら、メッセージ付きの支出として整理しやすいです。`
-    ]
-  },
-  gift: {
-    templates: [
-      ({ item, formattedAmount }) =>
-        `${item}に${formattedAmount}は、自分だけの買い物より説明しづらく見えます。ただ、相手に合わせて選び直す手間や、無難すぎる物を重ねる失敗を避ける費用まで含めるなら、単なる物代だけでは比べにくい支出です。`,
-      ({ item, formattedAmount }) =>
-        `${formattedAmount}の${item}は自分の手元に残りませんが、関係の場面で雑に済ませる方が後に残ります。相手に合わせてきちんと選ぶ前提なら、安さだけで決めない理由としては十分筋が通ります。`
-    ]
-  },
-  subscription: {
-    templates: [
-      ({ item, formattedAmount }) =>
-        `${item}に${formattedAmount}を払うのは一見すると固定費ですが、必要な都度探して申し込む手間まで含めると、継続して使う前提の方がむしろ整理しやすいです。単発の積み重ねと比べて利用頻度があるなら、定額化する理由は十分あります。`,
-      ({ item, formattedAmount }) =>
-        `${formattedAmount}の${item}は毎月見ると重く感じますが、使うたびに単発で払う場合や、必要なときに毎回探す手間と比べると、定額で常に使える状態を持つ意味はあります。`,
-      ({ periodLabel, unitCost }) =>
-        periodLabel && unitCost
-          ? `${periodLabel}${unitCost}です。継続前提で使うサービスなら、必要になるたびに都度判断するより、このくらいの単価で使える状態を持つ方が管理しやすいです。`
-          : ""
+  clockRepair: {
+    low: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、新しい時計を探すより静かに済みます。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、気に入った物をそのまま置ける代として軽いです。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、また動けば十分役目は果たしています。`
+    ],
+    normal: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、買い直しと配置し直しをまとめて避けた料金です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、気に入った景色を崩さない費用として自然です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、また同じ物を探すよりは話が早いです。`
+    ],
+    high: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、気に入った物を残す費用としてはありです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、時計代より探し直し回避費の顔です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気です。でも置いた景色を変えずに済みます。`
+    ],
+    extreme: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。新品比較込みで考える修理です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、時間を見る道具より愛着維持費です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気ですが、気に入った物を残したいなら話せます。`
     ]
   },
   fashionRepair: {
-    templates: [
-      ({ item, formattedAmount }) =>
-        `${item}に${formattedAmount}を払ったのは、新しく買い替える費用と比べて、今ある物を使い続けるためです。修理して寿命を延ばせるなら、次を買うより負担が小さいことがあります。`,
-      ({ item, formattedAmount }) =>
-        `${formattedAmount}の${item}は新しく買う額ではなくても、気に入っている物をそのまま使える価値があるなら、修理費として話がつきます。`,
-      ({ item, formattedAmount }) =>
-        `${item}に${formattedAmount}を出したのは、傷みを放置して使えなくなる前に手を入れるためです。買い替えより軽い出費で済むなら十分です。`
+    low: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、気に入った物をもう少し使う料金として軽いです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、新品探しを一回飛ばした代です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、また慣らし直す面倒を避けたと思えば自然です。`
+    ],
+    normal: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、買い直しより話が早いなら十分です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、使い慣れた物を延命した料金として通ります。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、また同じ物を探す面倒を止めた代です。`
+    ],
+    high: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、気に入った物を続投させる費用としてはありです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、修理費というより買い直し回避費です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気です。でも馴染んだ物を残す方が楽な時もあります。`
+    ],
+    extreme: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。新品比較まで入れて判断する帯です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、延命というより愛着維持費です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気ですが、また探し直す手間が重いならまだ話せます。`
     ]
   },
-  genericRepair: {
-    templates: [
-      ({ item, formattedAmount }) =>
-        `${item}に${formattedAmount}を払ったのは、新しく買い替える費用と比べて、今ある物を使い続けるためです。修理して使える状態へ戻せるなら、使用停止の期間を避ける意味があります。`,
-      ({ item, formattedAmount }) =>
-        `${formattedAmount}の${item}は高く見えても、買い替えと初期設定の手間を含めるなら、今の環境を維持する費用としては説明しやすいです。`,
-      ({ item, formattedAmount }) =>
-        `${item}に${formattedAmount}を出したのは、故障そのものより、使えない時間を短くするためです。代替品を用意するより軽いなら、修理代としては普通です。`
+  hat: {
+    low: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、一回出番があればそこまで重くありません。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、髪型を考える時間を少し減らせます。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、今日はこれでいいを作る料金としては軽いです。`
+    ],
+    normal: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、合わせやすいなら十分回せます。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、服装に迷う時間を短くする代として自然です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、何回か助けてくれた時点でだいぶ元は取れます。`
+    ],
+    high: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、服より顔の近くで効くので意外と目立ちます。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、布代というより見た目の調整代です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気です。でも被るだけでまとまるなら話は早いです。`
+    ],
+    extreme: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は帽子代ではなく趣味代です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、日除けより満足感に払っています。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。実用品より持ちたい気持ちが勝っています。`
     ]
   },
-  interior: {
-    templates: [
-      ({ item, formattedAmount }) =>
-        `${item}に${formattedAmount}は実用品と比べると説明しづらいです。ただ、部屋の印象を長く固定できて、安い飾りを何度も入れ替えるのを減らせるなら、一度で空間を整える費用として考えられます。`,
-      ({ item, formattedAmount }) =>
-        `${formattedAmount}の${item}は生活必需品ではありません。ただ、毎日目に入る場所の雰囲気を決める物なら、細かい物を買い足して散らかすより、一つで空間の軸を作る方が支出の筋は通ります。`,
-      ({ item, perDay3Years }) =>
-        `3年間そのまま置く前提なら、${item}は1日あたり${perDay3Years}です。気分だけの買い物に見えても、長く部屋に置いて空間の印象を決めるなら、単発の額だけでは判断しにくいです。`
+  coat: {
+    low: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、一着で外に出やすくなるなら軽いです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、防寒と見た目を一回で済ませた感じです。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、これを着れば終わるを買った代です。`
+    ],
+    normal: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、冬の主役なら十分出番があります。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、他の服を細かく足さずに済む方が楽です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、寒さ対策と見た目をまとめて払った感じです。`
+    ],
+    high: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、冬に毎回使うならまだ説明できます。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、防寒具だけでなく見た目代もちゃんと入っています。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気です。でも一番上に着る物は意外と回収先が多いです。`
+    ],
+    extreme: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は服代より趣味代の比率が高いです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、防寒より所有感に払っています。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。実用品だけでは説明しきれません。`
     ]
   },
-  otherProduct: {
-    templates: [
-      (data) => buildGenericProductExcuse(data, 0),
-      (data) => buildGenericProductExcuse(data, 1),
-      (data) => buildGenericProductExcuse(data, 2)
+  bag: {
+    low: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、荷物がまとまるだけでも十分仕事をしています。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、毎回これで済むならかなり楽です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、手ぶらで困る回を減らす代としては軽いです。`
+    ],
+    normal: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、服に合わせやすいなら出番で回収できます。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、毎回バッグ選びで止まらない料金として自然です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、荷物がまとまって見た目も整うなら十分話せます。`
+    ],
+    high: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、毎回これで済むなら意外と強いです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、入れ物代というより合わせやすさ代です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気です。でも荷物がまとまって服にも合うなら話は立ちます。`
+    ],
+    extreme: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、収納より趣味の比率が高いです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、荷物を入れる道具ではなく満足感です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。実用品の顔をしたロマン枠です。`
     ]
   },
-  otherService: {
-    templates: [
-      (data) => buildGenericServiceExcuse(data, 0),
-      (data) => buildGenericServiceExcuse(data, 1),
-      (data) => buildGenericServiceExcuse(data, 2)
+  sneakers: {
+    low: [
+      ({ item, formattedAmount, amount }) => `${formattedAmount}の${item}なら、100回お出かけすれば1回あたり${formatCurrency(Math.ceil(amount / 100))}です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、歩きにくい靴を我慢するよりは安いです。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、出かける気分を少し上げる代としては軽いです。`
+    ],
+    normal: [
+      ({ item, formattedAmount, amount }) => `${formattedAmount}の${item}は高めですが、100回お出かけすれば1回あたり${formatCurrency(Math.ceil(amount / 100))}です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、よく履く一足として考えればまだ無茶ではありません。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、服より悩まず履けるなら十分回せます。`
+    ],
+    high: [
+      ({ item, formattedAmount, amount }) => `${formattedAmount}の${item}は高いですが、100回履くなら1回あたり${formatCurrency(Math.ceil(amount / 100))}です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、靴代というより出かける気分の装備代です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気です。でもよく履く一足ならまだ説明できます。`
+    ],
+    extreme: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、普段靴というより完全に趣味です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、歩く道具より持っていたい気持ちに払っています。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。実用品だけで片付ける帯ではありません。`
+    ]
+  },
+  salon: {
+    low: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、自分で切って後悔するより安いです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、朝の整えやすさを先に買った感じです。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、手直し回避費としては普通に軽いです。`
+    ],
+    normal: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、身支度を楽にするなら十分話せます。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、自分で失敗しないための料金として自然です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、切る代というより整えやすさ代です。`
+    ],
+    high: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、長く悩む時間を一回で止めた感じです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、髪を切ったというより手入れを楽にする費用です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気です。でも毎朝の面倒が減るなら話せます。`
+    ],
+    extreme: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。美容というよりイベント枠です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、整える以上のことをしに行っています。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気ですが、長く引きずる悩みを止める費用ではあります。`
+    ]
+  },
+  hairOil: {
+    low: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、朝のまとまりが少し楽になる料金としては軽いです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、髪が暴れる朝の小さい保険です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、使い切れた時点で普通に仕事はしています。`
+    ],
+    normal: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、毎朝迷わず使えるなら十分話せます。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、髪の機嫌を少し安定させる代です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、一本で朝の手数を減らせるなら自然です。`
+    ],
+    high: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、ここまで来ると効果より気分の比率も入っています。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、整える油というより朝を急がせる道具です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気です。でも毎日触る物ならまだ説明できます。`
+    ],
+    extreme: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。ヘアケアの顔をした趣味枠です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、髪より満足感にも払っています。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気ですが、朝の気分を整える装備としては筋が通ります。`
+    ]
+  },
+  seitai: {
+    low: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、痛いまま一日機嫌が悪いより安いです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、不調を放置しない料金としては軽いです。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、一回ちょっと楽になるだけでも話は立ちます。`
+    ],
+    normal: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、体が少し楽ならその日の生産性で回収を狙えます。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、だるさを長引かせない費用として自然です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、不調を翌日に持ち越さないための料金と思えば話せます。`
+    ],
+    high: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、楽になって動けるなら結果的に得しやすいです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、体を整えて仕事しやすくする費用として筋は通ります。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気です。でも不調を引きずる方が面倒です。`
+    ],
+    extreme: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。ここまで来ると施術代というより不調停止費です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、その日のコンディション立て直しに大きく払っています。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気ですが、体が楽になればまだ回収先はあります。`
+    ]
+  },
+  gym: {
+    low: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、家から出る理由代としては軽いです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、一回体を動かした時点で完全敗北ではありません。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、運動のきっかけを買ったと思えば自然です。`
+    ],
+    normal: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、筋肉代ではなくサボりにくくする料金です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、運動する場所を先に確保した費用として通ります。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、行く理由が増えるならまだ話せます。`
+    ],
+    high: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、運動しないまま月を終えるよりはましです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、健康そのものではなく行動の仕組みに払っています。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気です。でも外に出る装置としては筋が通ります。`
+    ],
+    extreme: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。筋トレ代より、逃げにくくする費用です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、運動より自分の逃げ道封じに払っています。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気ですが、行く仕組みとして見るとまだ説明できます。`
+    ]
+  },
+  medicationApp: {
+    low: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、飲み忘れを減らす道具としては軽いです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、思い出す手間を外注した感じです。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、一回でもちゃんと役に立てば十分です。`
+    ],
+    normal: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、管理の面倒を減らすなら自然です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、薬そのものではなく忘れにくくする料金です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、毎回確認する手間を減らす代として話せます。`
+    ],
+    high: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、続けやすさを買ったと思えばまだ話せます。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、アプリ代というより管理の手間止め費です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気です。でも忘れ物を減らす道具としては筋が通ります。`
+    ],
+    extreme: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。機能だけでなく安心感にも払っています。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、記録アプリというより管理の本気装備です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気ですが、毎日の確認を外す費用としては説明できます。`
+    ]
+  },
+  pcGame: {
+    low: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、数時間遊べれば普通に回収できます。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、外に出ずに遊べた日の娯楽費としては軽いです。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、一回ちゃんと笑えた時点で十分です。`
+    ],
+    normal: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、映画を何本か見る時間遊べればかなり自然です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、家で完結する娯楽としてはまだ穏やかです。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、長く触るならちゃんと回収先があります。`
+    ],
+    high: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、外出イベント一回分と思えばまだ話せます。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、遊ぶための時間を家で確保した費用です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気です。でも娯楽費としてはまだ整理しやすいです。`
+    ],
+    extreme: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。ゲーム代というよりしばらく遊ぶ権利代です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、趣味としてかなり本気の帯です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気ですが、外遊び何回分かと比べるとまだ整理できます。`
+    ]
+  },
+  mobileGameCharge: {
+    low: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、遊んだ日の娯楽費としてはまだ軽いです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、見て終わるより一回ちゃんと参加した感じです。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、物は残らなくてもその日の遊び代としては自然です。`
+    ],
+    normal: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、外出せず遊んだ日の娯楽費としてはまだ話せます。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、強くなる代というより楽しみ方を増やした料金です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、形に残らないことを認めても娯楽費としては整理できます。`
+    ],
+    high: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。もうゲーム代というよりテンション代です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、遊びの勢いにちゃんと金額がついた感じです。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気ですが、外で散らすより家で完結した娯楽費です。`
+    ],
+    extreme: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強くなる料金ではありません。後に引けなくなった記念費です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、完全に娯楽予算の本気枠です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。物は残らないので、せめて話のネタにはします。`
+    ]
+  },
+  movieTicket: {
+    low: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、数時間ちゃんと別世界に行ければ十分です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、家にいない理由を作った代としては自然です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、一回ちゃんと集中できた時点で回収できます。`
+    ],
+    normal: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、席と時間をまとめて買ったと思えば普通です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、その日の予定を一つきれいに埋めた料金です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、物は残らなくても二時間借りた感じで話せます。`
+    ],
+    high: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、その日は映画というより外出イベントです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、内容だけでなく出かけた分まで込みです。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気です。でも一日をちゃんと使った感は残ります。`
+    ],
+    extreme: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、映画代よりイベント代の顔です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、映像を見るより記念日寄りです。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。作品代だけではもう説明しません。`
+    ]
+  },
+  eventGeneric: {
+    low: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、その日の予定を一個きれいに作れます。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、家にいるより話のネタは増えます。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、参加権としては十分話せます。`
+    ],
+    normal: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、物代ではなくその日にそこへ行く権利代です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、同じ機会を後から作りにくい分だけ筋は通ります。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、参加した時点で目的は果たしています。`
+    ],
+    high: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、一回しか使えないからこそ話は単純です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、イベントというより記念日の比率が高いです。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気です。でも後から同じ日を買い直せません。`
+    ],
+    extreme: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。体験代より記録代の顔になっています。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、参加費より思い出の本気枠です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気ですが、一回で終わるからこそ用途ははっきりしています。`
+    ]
+  },
+  spacha: {
+    low: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、配信を見た料金にコメント代を乗せたくらいです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、見て終わらず応援を形にした代としては軽いです。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、配信参加費としてはまだ穏やかです。`
+    ],
+    normal: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、配信への支援とメッセージ代をまとめた感じです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、細かく何度も投げる代わりに一回で応援を置いた感じです。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、物は残らなくても娯楽費と支援費の合算として話せます。`
+    ],
+    high: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、もうコメント代ではなくスポンサー費寄りです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、配信を見た代より応援予算の本体に近いです。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気です。でも応援費として分けているなら話はまだ通ります。`
+    ],
+    extreme: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。物代ではなく、名前を出して応援した記録代です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、配信参加費より完全に支援費です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気ですが、年間の応援予算で見るならまだ整理可能です。`
+    ]
+  },
+  sponsorFrame: {
+    low: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、応援を見える形にした費用としてはまだ軽いです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、物代ではなく名前を出した支援費として話せます。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、娯楽費より支援費に近い出費です。`
+    ],
+    normal: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、商品代ではなくスポンサー費として見る方が自然です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、応援予算を一回で使った形としては整理できます。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、物が残らない代わりに支援の記録はちゃんと残ります。`
+    ],
+    high: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、もう娯楽費よりスポンサー費です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、名前を出して応援した記録代として見るのが素直です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気です。でも支援先がはっきりしている分だけ散財より話は早いです。`
+    ],
+    extreme: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}はかなり高いです。商品代ではなく完全にスポンサー費です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、応援予算の本気枠として扱うしかありません。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気ですが、応援費として切り分けるならまだ話せます。`
+    ]
+  },
+  chair: {
+    low: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、床に座るより楽な時点で十分です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、座る場所をちゃんと確保した代として軽いです。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、一回姿勢がましになるだけでも話せます。`
+    ],
+    normal: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、毎日座るなら家の中でかなり出番があります。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、家具代というより作業姿勢代です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、数時間座る物として見るとそこまで変ではありません。`
+    ],
+    high: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、毎日使う席なら回収先はかなり多いです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、部屋の中心に払ったと思えばまだ話せます。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気です。でも座るたび機嫌がましなら十分です。`
+    ],
+    extreme: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、家具というより生活環境そのものに払っています。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、椅子代より居場所代の顔です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、長く触れる物として考える帯です。`
+    ]
+  },
+  mug: {
+    low: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、一回でもちゃんと使えば十分です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、家で飲む気分を少し整える代として軽いです。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、毎朝の小さい機嫌代としては自然です。`
+    ],
+    normal: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、毎日目に入る物ならまだ話せます。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、飲み物代ではなく見る物への課金です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、使うたびちょっと気分が上がるなら十分です。`
+    ],
+    high: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、ここまで来ると食器より趣味寄りです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、飲む道具というより机の景色代です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気です。でも毎日見る物ならまだ説明できます。`
+    ],
+    extreme: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、飲み物代ではなく完全に趣味代です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、もう器より満足感に払っています。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。実用品の顔をしたコレクションです。`
+    ]
+  },
+  umbrella: {
+    low: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、濡れて機嫌が終わるより安いです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、一回ちゃんと防げば十分役目は果たしています。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、急な雨の罰金を先に払った感じです。`
+    ],
+    normal: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、壊れて買い直す回数が減るなら自然です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、びしょびしょ回避費としてはかなり素直です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、雨の日の面倒を減らす道具として話せます。`
+    ],
+    high: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、ここまで来ると雨具より気分の装備です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、濡れない以上に持ちたい気持ちにも払っています。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気です。でも雨の日の不機嫌を減らすなら筋は通ります。`
+    ],
+    extreme: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は傘代というより趣味代です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、雨を防ぐ道具の相場からは完全に出ています。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。実用品より所有したい気持ちが主役です。`
+    ]
+  },
+  housekeeping: {
+    low: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、苦手な家事を一回外した料金としては軽いです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、休日を全部掃除で潰さない代です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、時間を買ったと言ってそこまで無理はありません。`
+    ],
+    normal: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、掃除代というより休日を守った料金です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、自分でやるより早く片付くなら十分自然です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、苦手作業を外注したと思えば話せます。`
+    ],
+    high: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、家事ではなく休みを買ったと思えば整理しやすいです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、疲れている日に生活を崩さないための費用です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気です。でも休日を作業で潰すよりは話が早いです。`
+    ],
+    extreme: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。家事代より生活立て直し費の顔です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、作業ではなく自由時間を取り戻しに行っています。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気ですが、崩れた生活を戻す用途ならまだ話せます。`
+    ]
+  },
+  subscriptionGeneric: {
+    low: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、一回使った時点でそこまで赤字ではありません。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、都度払う手間を消した代としては軽いです。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、解約を忘れなければ普通に穏やかです。`
+    ],
+    normal: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、毎回払う面倒を省けるなら自然です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、月の中で何回か使えばまだ話せます。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、使い道がある月ならそこまで変ではありません。`
+    ],
+    high: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。使っていないと厳しいので、使う前提で押し切ります。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、便利さより解約し忘れとの戦いです。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気ですが、複数回使う月ならまだ立て直せます。`
+    ],
+    extreme: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。ここまで来ると使うかどうかがすべてです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、サブスクというより固定費の本気枠です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気ですが、忘れず使えばまだ話は残ります。`
+    ]
+  },
+  hotelLunch: {
+    low: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、少し丁寧な昼にした代としては軽いです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、席と空気まで込みで考えれば自然です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、昼食を少しイベント化した料金です。`
+    ],
+    normal: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、食事と場所代をまとめた感じです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、宿泊ではなく昼の気分転換として話せます。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、ホテルを使った昼食として見るならまだ自然です。`
+    ],
+    high: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、昼食というより小さいイベントです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、味だけでなく場の料金まで込みです。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気です。でも昼の予定をきれいに作れています。`
+    ],
+    extreme: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は昼食代ではなくイベント代です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、ランチというより記念日の顔です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。普通の昼ごはん比較はもうやめます。`
+    ]
+  },
+  dailyGoods: {
+    low: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、一回ちゃんと使えば十分です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、小さい不便を一つ消した代として軽いです。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、家の中の面倒を少し減らす料金として自然です。`
+    ],
+    normal: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、毎日触るならまだ話せます。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、買い直しを減らす方に振った感じです。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、使うたび地味に楽になるなら十分です。`
+    ],
+    high: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、ここまで来ると便利さと気分の合算です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、実用品の顔をした趣味寄りの出費です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気です。でも毎日見る物なら回収先はあります。`
+    ],
+    extreme: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。生活用品より満足感の比率が高いです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、道具というより生活の景色代です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気ですが、長く目に入る物として考える帯です。`
+    ]
+  },
+  genericProduct: {
+    low: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、外れても被害がまだ小さいです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、一回でも目的を果たせばかなり十分です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、小さい不便を減らす料金としては軽いです。`
+    ],
+    normal: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、安い物を三回買う未来を一回で終わらせた扱いです。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、ちょっとした面倒を金で止めた料金です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めでも、使う理由が一個あればまだ通ります。`
+    ],
+    high: [
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、機能だけでなく気分にも払っています。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気です。でも一回で納得したい側の出費です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、安い代替を探し続ける時間ごと切っています。`
+    ],
+    extreme: [
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、用途よりネタの方が強いです。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は実用品代ではありません。完全に趣味か記念です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、普通の買い物としては見ない方が楽です。`
+    ]
+  },
+  genericService: {
+    low: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、一回面倒が減れば十分です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、手間を少し外注した料金としては軽いです。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}なら、時間を買ったと言ってそこまで無理はありません。`
+    ],
+    normal: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高めですが、自分でやる手間が減るなら話せます。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、作業そのものより面倒回避費です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は、時間を空けた料金として見ると自然です。`
+    ],
+    high: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いですが、苦手作業を切り離したと思えばまだ話せます。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}なら、サービス代というより気力温存費です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気です。でも自分でやるより早いなら筋は通ります。`
+    ],
+    extreme: [
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は高いです。もう作業代より生活立て直し費です。`,
+      ({ item, formattedAmount }) => `${item}に${formattedAmount}まで行くと、時間の買い方としてかなり本気です。`,
+      ({ item, formattedAmount }) => `${formattedAmount}の${item}は強気ですが、面倒を丸ごと外した費用としては説明できます。`
     ]
   }
 };
-
-const VALIDATION_RULES = [
-  {
-    test: (context, text) => context.categoryName !== "shoes" && /履く|履ける/.test(text),
-    reason: "靴以外で履く表現が出ています。"
-  },
-  {
-    test: (context, text) => context.categoryName !== "fashionWear" && /着る|着回し/.test(text),
-    reason: "服以外で着る表現が出ています。"
-  },
-  {
-    test: (context, text) => context.categoryName !== "bag" && /荷物がまとまる|入れ替え/.test(text),
-    reason: "バッグ以外でバッグ向け表現が出ています。"
-  },
-  {
-    test: (context, text) => context.categoryName !== "travelStay" && /宿代|宿泊/.test(text),
-    reason: "宿泊以外で宿泊向け表現が出ています。"
-  },
-  {
-    test: (context, text) =>
-      ["food", "gameMicrotransaction", "beautyProduct", "dailyGoods", "beautyService", "healthService", "medicalCare", "transport", "premiumTransit", "travelStay", "event", "timeSavingService", "sponsorship", "gift", "subscription", "otherService", "genericRepair", "homeRepair", "fashionRepair", "carMaintenance"].includes(context.categoryName) &&
-      /100回|1回あたり|3年間使えれば/.test(text),
-    reason: "長期利用向けの計算が不自然なカテゴリです。"
-  },
-  {
-    test: (context, text) => context.categoryName === "gameMicrotransaction" && /100回|1回あたり|資産/.test(text),
-    reason: "ゲーム課金に回数計算や資産表現が出ています。"
-  },
-  {
-    test: (context, text) => context.categoryName !== "carCustom" && /純正/.test(text) && !/比べ/.test(text),
-    reason: "車カスタム以外で純正の話をしています。"
-  },
-  {
-    test: (context, text) =>
-      context.billingPeriod === "monthly" && /1日あたり.*年/.test(text),
-    reason: "月額なのに年額扱いの計算が出ています。"
-  }
-];
-
-const CATEGORY_REASON_PATTERNS = {
-  carMaintenance: [/故障/, /整備/, /走れ/, /移動手段/, /追加整備/],
-  carCustom: [/乗り味/, /純正/, /再作業/, /車高/, /部品/],
-  vehiclePurchase: [/維持費/, /修理費/, /総額/, /タクシー/, /レンタカー/, /複数用途/, /売却/, /使用期間/],
-  transport: [/乗り換え/, /待ち時間/, /遅刻/, /段取り/, /徒歩/],
-  premiumTransit: [/体力/, /コンディション/, /普通席/, /到着後/, /休憩/],
-  travelStay: [/滞在時間/, /日帰り/, /日程/, /宿代/, /移動代/],
-  food: [/食事/, /場所/, /コース/, /移動/, /時間/],
-  stationery: [/筆記具/, /文房具/, /通常品/, /用途/, /数量/, /仕様/],
-  kitchenGoods: [/調理/, /食器/, /耐久/, /片付け/, /日常/],
-  furniture: [/家具/, /収納/, /作業姿勢/, /買い替え/, /空間/],
-  generalHouseholdItem: [/生活用品/, /仕様/, /買い直し/, /手間/, /日常/],
-  shoes: [/履く/, /出番/, /外出/, /靴/, /足に合/],
-  fashionWear: [/着回し/, /組み合わせ/, /定番/, /毎年/, /服/],
-  bag: [/荷物/, /入れ替え/, /通勤/, /休日/, /バッグ/],
-  fashionAccessory: [/印象/, /小物/, /組み合わせ/, /服/, /まとめ/],
-  beautyProduct: [/仕上がり/, /買い直し/, /使い切/, /合わない/, /毎回/],
-  beautyService: [/整えて/, /セット/, /周期/, /扱いやすい/, /毎朝/],
-  healthDevice: [/自宅/, /通う/, /必要なとき/, /体を整/, /手段/],
-  healthApp: [/記録/, /管理/, /服薬/, /抜け漏れ/, /仕組み/],
-  healthService: [/体を整/, /引きず/, /動きやす/, /仕事/, /日常/],
-  healthSubscription: [/機会/, /続け/, /枠/, /健康管理/, /動く環境/],
-  gameMicrotransaction: [/娯楽予算/, /交通費/, /飲食費/, /外出/, /課金/],
-  medicalCare: [/不調/, /悪化/, /通院/, /薬/, /生活/],
-  insurance: [/高額/, /リスク/, /固定費/, /振れ幅/, /備え/],
-  homeDevice: [/毎日/, /動線/, /作業/, /機器/, /時間/],
-  homeRepair: [/買い替え/, /設定/, /使えない期間/, /修理/, /今の環境/],
-  workTool: [/作業時間/, /やり直し/, /外注/, /効率/, /道具/],
-  gameEntertainment: [/娯楽/, /遊ぶ時間/, /交通費/, /飲食費/, /継続/],
-  event: [/限定/, /開催日/, /体験/, /入場/, /接点/],
-  dailyGoods: [/毎日/, /消耗品/, /買い直し/, /失敗/, /手間/],
-  timeSavingService: [/時間/, /面倒/, /作業/, /優先順位/, /予定/],
-  sponsorship: [/広告/, /協賛/, /接点/, /広報/, /支援/],
-  creatorSupport: [/配信/, /支援/, /応援予算/, /娯楽費/, /メッセージ/, /活動費/, /スポンサー費/, /年間予算/],
-  gift: [/相手/, /選び直し/, /関係/, /無難/, /贈り物/],
-  subscription: [/定額/, /都度/, /継続/, /単発/, /管理/],
-  fashionRepair: [/修理/, /買い替え/, /寿命/, /使い続け/, /傷み/],
-  genericRepair: [/修理/, /買い替え/, /使えない時間/, /戻す/, /維持/],
-  interior: [/部屋/, /空間/, /印象/, /飾り/, /置く/],
-  otherProduct: [/用途/, /比較/, /条件/, /品質/, /仕様/, /数量/],
-  otherService: [/時間短縮/, /手間/, /別の手段/, /サービス/, /内容/]
-};
-
-const POSITIVE_COMPARISON = /比べ|比較|より|単純比較|別の|まとめて|買い替え|都度|普通席|外注|交通費|飲食費|安い物|純正/;
-const POSITIVE_LOSS_AVOID = /減ら|避け|防げ|守れ|崩さ|引きず|止める|使えない|やり直し|散らか|悪化|回避/;
-const POSITIVE_TIME = /1日あたり|1回あたり|毎日|通勤|休日|乗り換え|待ち時間|到着後|作業時間|日帰り|100回|3年間|1年間|都度/;
-const POSITIVE_CONDITIONAL = /なら|前提|場合|含まれる|考えると|仮定/;
-const NEGATIVE_GENERIC = /欲しいと思った|自分の判断|納得している|完璧な理由|生活に支障|好きなら|気分が上がる|無駄とは限らない|意味がある|それで十分|自分への投資|経験にお金/;
-const NEGATIVE_WEAK = /ありです|悪くありません|十分です|話がつきます/;
-
-function hasAny(text, terms) {
-  return terms.some((term) => text.includes(term));
-}
-
-function toHalfWidth(value) {
-  return value
-    .replace(/[！-～]/g, (char) => String.fromCharCode(char.charCodeAt(0) - 0xfee0))
-    .replace(/\u3000/g, " ");
-}
 
 function normalizeInput(value) {
-  return toHalfWidth(value).trim().replace(/\s+/g, " ").toLowerCase();
+  return (value || "")
+    .normalize("NFKC")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+function cleanDisplayItemName(value) {
+  return (value || "")
+    .normalize("NFKC")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/^(?:約)?\d[\d,]*(?:\.\d+)?(?:円|万円|千円)の?/u, "")
+    .replace(/^(?:約)?\d[\d,]*(?:\.\d+)?万の?/u, "")
+    .trim();
+}
+
+function formatCurrency(amount) {
+  return `${Number(amount).toLocaleString("ja-JP")}円`;
 }
 
 function detectAmbiguousInput(normalizedItemName) {
-  return AMBIGUOUS_INPUTS[normalizedItemName] || "";
-}
-
-function detectSpecificExceptions(normalizedItemName) {
-  if (hasAny(normalizedItemName, WORDS.excludedVehicle)) {
-    return "nonVehicle";
+  if (!normalizedItemName) {
+    return "商品名を入力してください。";
   }
 
-  if (hasAny(normalizedItemName, WORDS.excludedMedical)) {
-    return "nonMedical";
+  const plain = normalizedItemName.replace(/[0-9.,円万円千円]/g, "").trim();
+
+  for (const [word, message] of GENERIC_NAME_MESSAGES.entries()) {
+    if (plain === word) {
+      return message;
+    }
   }
 
-  if (hasAny(normalizedItemName, WORDS.hotelFood)) {
-    return "hotelFood";
-  }
-
-  if (hasAny(normalizedItemName, WORDS.gameMicrotransaction)) {
-    return "gameMicrotransaction";
-  }
-
-  if (hasAny(normalizedItemName, WORDS.healthApp)) {
-    return "healthApp";
-  }
-
-  if (normalizedItemName.includes("機種交換")) {
-    return "deviceReplacement";
-  }
-
-  if (normalizedItemName.includes("プレゼント交換")) {
-    return "giftExchange";
+  if (/^(商品|用品|部品|サービス|グッズ|アイテム)(の.*)?$/u.test(plain)) {
+    return "名前が広すぎます。何を買ったのか分かるように入れてください。";
   }
 
   return "";
 }
 
+function detectSpecificExceptions(normalizedItemName) {
+  return {
+    isBicycleRepair: normalizedItemName.includes("自転車修理"),
+    isWheelchairRepair: normalizedItemName.includes("車椅子修理"),
+    isHotelLunch: normalizedItemName.includes("ホテルランチ"),
+    isHandSoap: normalizedItemName.includes("ハンドソープ"),
+    isHairOil: normalizedItemName.includes("ヘアオイル")
+  };
+}
+
 function detectActionType(normalizedItemName) {
-  if (hasAny(normalizedItemName, WORDS.repair) || hasAny(normalizedItemName, WORDS.repairLikeExchange)) {
+  if (normalizedItemName.includes("修理")) {
     return "repair";
   }
 
-  if (normalizedItemName.includes("交換")) {
-    return "exchange";
+  if (normalizedItemName.includes("会費") || normalizedItemName.includes("月額")) {
+    return "subscription";
   }
 
-  if (hasAny(normalizedItemName, ["購入", "買った", "買い物"])) {
-    return "purchase";
-  }
+  return "purchase";
+}
 
-  return "generic";
+function detectRepairContext(normalizedItemName, specificException, actionType) {
+  return {
+    isRepair: actionType === "repair",
+    isVehicleRepair:
+      actionType === "repair" &&
+      !specificException.isBicycleRepair &&
+      !specificException.isWheelchairRepair &&
+      /(車|自動車|エンジン|タイヤ|オイル|ブレーキ)/u.test(normalizedItemName)
+  };
 }
 
 function detectBillingPeriod(normalizedItemName) {
-  if (hasAny(normalizedItemName, WORDS.annualWords)) {
-    return "yearly";
+  if (normalizedItemName.includes("月")) {
+    return "monthly";
   }
 
-  if (hasAny(normalizedItemName, WORDS.recurringWords)) {
-    return "monthly";
+  if (normalizedItemName.includes("年")) {
+    return "yearly";
   }
 
   return "single";
 }
 
 function detectConsumableType(normalizedItemName, categoryName) {
-  if (["beautyProduct", "dailyGoods"].includes(categoryName)) {
-    return "consumable";
+  if (categoryName === "food") {
+    return "food";
   }
 
-  if (categoryName === "stationery") {
-    const subtype = detectStationeryTrait(normalizedItemName);
-    return ["pencil", "pen", "eraser", "paper"].includes(subtype) ? "consumable" : "durable";
-  }
-
-  if (["homeDevice", "healthDevice", "shoes", "fashionWear", "bag", "fashionAccessory", "workTool", "interior", "kitchenGoods", "furniture", "generalHouseholdItem"].includes(categoryName)) {
-    return "durable";
+  if (categoryName === "beauty" && normalizedItemName.includes("オイル")) {
+    return "beauty";
   }
 
   return "other";
 }
 
-function formatCurrency(value) {
-  return `${Number(value).toLocaleString("ja-JP")}円`;
+function detectItemType(normalizedItemName) {
+  const matched = SUBTYPE_RULES.find((rule) =>
+    rule.keywords.some((keyword) => normalizedItemName.includes(keyword))
+  );
+
+  return matched ? matched.subtype : "";
 }
 
-function calculatePerUse(amount, count) {
-  return formatCurrency(Math.round(amount / count));
-}
-
-function calculatePerDay(amount, days) {
-  return formatCurrency(Math.round(amount / days));
-}
-
-function calculateUnitCost(amount, billingPeriod) {
-  if (billingPeriod === "monthly") {
-    return calculatePerDay(amount, 30);
+function detectCategory(normalizedItemName, repairContext, specificException) {
+  if (specificException.isHotelLunch) {
+    return "food";
   }
 
-  if (billingPeriod === "yearly") {
-    return calculatePerDay(amount, 365);
+  if (repairContext.isVehicleRepair) {
+    return "carMaintenance";
   }
 
-  return "";
+  const matched = SUBTYPE_RULES.find((rule) =>
+    rule.keywords.some((keyword) => normalizedItemName.includes(keyword))
+  );
+
+  if (matched) {
+    return matched.category;
+  }
+
+  if (repairContext.isRepair) {
+    return "repair";
+  }
+
+  if (/(代行|クリーニング|施術|相談|診断|レッスン|サロン)/u.test(normalizedItemName)) {
+    return "genericService";
+  }
+
+  return "genericProduct";
 }
 
 function detectPriceLevel(amount, categoryName) {
-  const thresholds = {
-    stationery: [500, 3000, 10000],
-    kitchenGoods: [3000, 10000, 30000],
-    furniture: [10000, 50000, 150000],
-    generalHouseholdItem: [2000, 10000, 30000],
-    fashionAccessory: [5000, 30000, 100000],
-    bag: [10000, 30000, 100000],
-    homeDevice: [5000, 30000, 100000],
-    workTool: [5000, 30000, 100000]
-  };
-  const [low, medium, high] = thresholds[categoryName] || [1000, 10000, 50000];
+  const thresholds = PRICE_THRESHOLDS[categoryName] || PRICE_THRESHOLDS.genericProduct;
 
-  if (amount < low) {
+  if (amount <= thresholds.low) {
     return "low";
   }
 
-  if (amount < medium) {
-    return "medium";
+  if (amount <= thresholds.normal) {
+    return "normal";
   }
 
-  if (amount < high) {
+  if (amount <= thresholds.high) {
     return "high";
   }
 
-  return "veryHigh";
-}
-
-function getPriceRecognition(categoryName, priceLevel, comparisonLabel) {
-  if (priceLevel === "veryHigh") {
-    return `${comparisonLabel}として見れば高額です`;
-  }
-
-  if (priceLevel === "high") {
-    return `${comparisonLabel}として見ると高めです`;
-  }
-
-  if (priceLevel === "medium") {
-    return `${comparisonLabel}として見ると安い方ではありません`;
-  }
-
-  return `${comparisonLabel}としてはそこまで強い金額ではありません`;
-}
-
-function flattenKeywordGroups() {
-  return [
-    WORDS.stationery,
-    WORDS.kitchenGoods,
-    WORDS.furniture,
-    WORDS.generalHouseholdItem,
-    WORDS.vehiclePurchase,
-    WORDS.vehicleMaintenance,
-    WORDS.carCustom,
-    WORDS.transport,
-    WORDS.travelStay,
-    WORDS.event,
-    WORDS.food,
-    WORDS.dailyGoods,
-    WORDS.timeSavingService,
-    WORDS.beautyProduct,
-    WORDS.beautyService,
-    WORDS.healthDevice,
-    WORDS.healthApp,
-    WORDS.healthService,
-    WORDS.healthSubscription,
-    WORDS.medicalCare,
-    WORDS.insurance,
-    WORDS.gameEntertainment,
-    WORDS.gameMicrotransaction,
-    WORDS.sponsorship,
-    WORDS.creatorSupport,
-    WORDS.workTool,
-    WORDS.shoes,
-    WORDS.bag,
-    WORDS.fashionAccessory,
-    WORDS.fashionWear,
-    WORDS.gift,
-    WORDS.subscription,
-    WORDS.interior,
-    WORDS.homeDevice
-  ].flat();
-}
-
-const AMBIGUOUS_PRODUCT_WORDS = ["商品", "用品", "グッズ", "道具", "アイテム", "部品", "物", "買い物", "その他", "何か"];
-const AMBIGUOUS_SERVICE_WORDS = ["サービス", "作業", "サポート", "メニュー", "プラン", "依頼"];
-const KNOWN_PRODUCT_KEYWORDS = flattenKeywordGroups();
-
-function isGenericOnlyName(normalizedItemName, genericWords) {
-  const pattern = new RegExp(`^(?:高級|限定|一般|普通|簡易|中古|新品|業務用|家庭用|大型|小型|新しい|古い|安い|高い|上質な|特別な)?(?:${genericWords.join("|")})$`);
-  return pattern.test(normalizedItemName);
+  return "extreme";
 }
 
 function isSpecificProductName(normalizedItemName) {
-  if (!normalizedItemName) {
-    return false;
-  }
-
-  if (AMBIGUOUS_PRODUCT_WORDS.includes(normalizedItemName) || isGenericOnlyName(normalizedItemName, AMBIGUOUS_PRODUCT_WORDS)) {
-    return false;
-  }
-
-  if (hasAny(normalizedItemName, WORDS.serviceWords)) {
-    return false;
-  }
-
-  if (hasAny(normalizedItemName, KNOWN_PRODUCT_KEYWORDS)) {
-    return true;
-  }
-
-  return /[a-z0-9ぁ-んァ-ヶ一-龠]/.test(normalizedItemName) && normalizedItemName.length >= 2;
+  return !detectAmbiguousInput(normalizedItemName);
 }
 
 function isSpecificServiceName(normalizedItemName) {
-  if (!normalizedItemName) {
-    return false;
-  }
-
-  if (AMBIGUOUS_SERVICE_WORDS.includes(normalizedItemName) || isGenericOnlyName(normalizedItemName, AMBIGUOUS_SERVICE_WORDS)) {
-    return false;
-  }
-
-  return hasAny(normalizedItemName, WORDS.serviceWords) || normalizedItemName.length >= 4;
-}
-
-function detectStationeryTrait(normalizedItemName) {
-  if (normalizedItemName.includes("鉛筆削り")) {
-    return "sharpener";
-  }
-
-  if (hasAny(normalizedItemName, ["鉛筆", "シャープペン", "シャープペンシル"])) {
-    return "pencil";
-  }
-
-  if (hasAny(normalizedItemName, ["ボールペン", "万年筆", "ペン", "筆記具"])) {
-    return "pen";
-  }
-
-  if (normalizedItemName.includes("消しゴム")) {
-    return "eraser";
-  }
-
-  if (hasAny(normalizedItemName, ["ノート", "手帳", "メモ帳", "付箋", "ファイル", "バインダー"])) {
-    return "paper";
-  }
-
-  if (normalizedItemName.includes("電卓")) {
-    return "calculator";
-  }
-
-  return "deskTool";
-}
-
-function detectKitchenTrait(normalizedItemName) {
-  if (hasAny(normalizedItemName, ["フライパン", "鍋", "包丁", "まな板", "調理器具"])) {
-    return "cookware";
-  }
-
-  if (hasAny(normalizedItemName, ["マグカップ", "コップ", "水筒"])) {
-    return "drinkware";
-  }
-
-  if (hasAny(normalizedItemName, ["皿", "茶碗", "箸", "スプーン", "フォーク", "食器"])) {
-    return "tableware";
-  }
-
-  return "container";
-}
-
-function detectFurnitureTrait(normalizedItemName) {
-  if (hasAny(normalizedItemName, ["椅子", "ソファ"])) {
-    return "seat";
-  }
-
-  if (hasAny(normalizedItemName, ["机", "テーブル"])) {
-    return "desk";
-  }
-
-  if (hasAny(normalizedItemName, ["本棚", "棚", "収納箱", "収納ケース", "タンス", "ゴミ箱", "カーテン"])) {
-    return "storage";
-  }
-
-  return "bedding";
-}
-
-function detectHouseholdTrait(normalizedItemName) {
-  if (normalizedItemName.includes("傘")) {
-    return "rain";
-  }
-
-  if (hasAny(normalizedItemName, ["タオル", "ハンカチ"])) {
-    return "fabric";
-  }
-
-  if (hasAny(normalizedItemName, ["財布", "キーホルダー"])) {
-    return "carry";
-  }
-
-  if (hasAny(normalizedItemName, ["充電器", "ケーブル", "延長コード", "電池"])) {
-    return "power";
-  }
-
-  if (hasAny(normalizedItemName, ["時計", "ライト", "懐中電灯", "体温計"])) {
-    return "smallDevice";
-  }
-
-  return "tool";
-}
-
-function detectGenericProductTrait(normalizedItemName) {
-  if (hasAny(normalizedItemName, ["セット", "まとめ", "箱", "ケース"])) {
-    return "bundle";
-  }
-
-  if (hasAny(normalizedItemName, ["器", "皿", "カップ", "鍋", "パン"])) {
-    return "houseware";
-  }
-
-  if (hasAny(normalizedItemName, ["コード", "充電", "電池", "アダプタ"])) {
-    return "electronicAccessory";
-  }
-
-  if (hasAny(normalizedItemName, ["服", "靴", "帽子", "財布", "鞄"])) {
-    return "wearable";
-  }
-
-  return "generic";
+  return !detectAmbiguousInput(normalizedItemName);
 }
 
 function detectItemTraits(normalizedItemName, categoryName) {
-  if (categoryName === "stationery") {
-    return { subtype: detectStationeryTrait(normalizedItemName) };
-  }
-
-  if (categoryName === "kitchenGoods") {
-    return { subtype: detectKitchenTrait(normalizedItemName) };
-  }
-
-  if (categoryName === "furniture") {
-    return { subtype: detectFurnitureTrait(normalizedItemName) };
-  }
-
-  if (categoryName === "generalHouseholdItem") {
-    return { subtype: detectHouseholdTrait(normalizedItemName) };
-  }
-
-  if (categoryName === "otherProduct") {
-    return { subtype: detectGenericProductTrait(normalizedItemName) };
-  }
-
-  return { subtype: "generic" };
-}
-
-function buildStationeryExcuse({ item, formattedAmount, priceLevel, itemTraits }, variant) {
-  const subtype = itemTraits.subtype;
-  const profiles = {
-    pencil: {
-      comparison: "一般的な一本の鉛筆",
-      scenarioA: "画材用のセットや長期分のまとめ買い",
-      scenarioB: "芯の硬さをそろえた専門用途や限定品",
-      scenarioC: "本数や用途をまとめて確保する買い方",
-      result: "必要な筆記具や消耗品を先に揃えた費用として整理できます"
-    },
-    pen: {
-      comparison: item.includes("万年筆") ? "一般的な事務用の筆記具" : "一般的な使い捨てペン",
-      scenarioA: item.includes("万年筆") ? "ペン先や調整、替インクまで含む筆記具" : "替芯で使い続ける筆記具や記念品クラス",
-      scenarioB: item.includes("万年筆") ? "長く使う前提の高級筆記具" : "書きやすさや耐久性を重視した高級筆記具",
-      scenarioC: "安価なペンを何度も買い直すより一本にまとめる考え方",
-      result: "単なるインク代ではなく使う道具全体への支払いとして説明できます"
-    },
-    eraser: {
-      comparison: "一般的な一個の消しゴム",
-      scenarioA: "業務用のまとめ買いや画材向けの消耗品",
-      scenarioB: "用途ごとに種類をそろえたセット",
-      scenarioC: "必要数をまとめて確保する買い方",
-      result: "単品価格ではなく、数量や用途を含めた消耗品費として見る必要があります"
-    },
-    paper: {
-      comparison: "一般的な一冊の文房具",
-      scenarioA: "冊数をまとめた購入や仕様をそろえたセット",
-      scenarioB: "用途別にサイズや紙質を分ける前提",
-      scenarioC: "必要な規格を一度で揃える買い方",
-      result: "単価ではなく、必要な冊数や仕様全体で比べる方が自然です"
-    },
-    calculator: {
-      comparison: "一般的な電卓一台",
-      scenarioA: "関数電卓や業務用の仕様を含む機種",
-      scenarioB: "使う場面に応じて精度や機能を選ぶ必要がある場合",
-      scenarioC: "必要な機能を満たす機種を最初から選ぶ買い方",
-      result: "通常品と同じ基準で比べず、機能条件に対する支払いとして説明できます"
-    },
-    sharpener: {
-      comparison: "一般的な鉛筆削り一台",
-      scenarioA: "替刃や削り角度まで含めて選ぶ仕様",
-      scenarioB: "複数本を続けて削る用途や耐久性を重視する場合",
-      scenarioC: "安価な物を買い直す回数を減らす考え方",
-      result: "単に鉛筆の付属品ではなく、作業性を支える道具として整理できます"
-    },
-    deskTool: {
-      comparison: "一般的な文房具ひとつ",
-      scenarioA: "精度や刃の品質、セット内容が違う場合",
-      scenarioB: "複数本セットや業務用の構成",
-      scenarioC: "使いにくい物を何度も買い直さないための選び方",
-      result: "単品価格だけでなく、仕様や構成全体で比べるべき支出です"
-    }
+  return {
+    subtype: detectItemType(normalizedItemName) || CATEGORY_FALLBACKS[categoryName] || "genericProduct",
+    mentionsRepair: normalizedItemName.includes("修理"),
+    mentionsMonthly: normalizedItemName.includes("月会費") || normalizedItemName.includes("月額")
   };
-  const profile = profiles[subtype] || profiles.deskTool;
-  const recognition = getPriceRecognition("stationery", priceLevel, profile.comparison);
-  const resultText = profile.result.endsWith("。") ? profile.result : `${profile.result}。`;
-
-  if (variant === 0) {
-    return `${item}に${formattedAmount}は、${recognition}。ただ、${profile.scenarioA}なら、一本や一個の通常品だけで比べるのは適切ではありません。用途と数量が金額に見合っているなら、${resultText}`;
-  }
-
-  if (variant === 1) {
-    return `${formattedAmount}の${item}は、${profile.comparison}だけで見れば重い金額です。ただ、${profile.scenarioB}なら、一般的な事務用品と同じ基準では比較できません。必要な構成全体への支払いと考えるなら、筋道は立てやすいです。`;
-  }
-
-  return `${item}に${formattedAmount}は高めです。とはいえ、${profile.scenarioC}なら、安い物を何度も選び直す場合との比較になります。単品の値札だけでなく、必要な本数や仕様まで含めて見合うなら説明できます。`;
 }
 
-function buildKitchenGoodsExcuse({ item, formattedAmount, priceLevel, itemTraits }, variant) {
-  const subtype = itemTraits.subtype;
-  const profiles = {
-    cookware: {
-      comparison: "一般的な調理器具ひとつ",
-      scenarioA: "耐久性や熱まわりまで含めて選ぶ調理器具",
-      scenarioB: "複数用途で回せて買い替え頻度を下げる前提",
-      scenarioC: "外食や使い捨て用品に寄る回数を減らす使い方"
-    },
-    drinkware: {
-      comparison: "一般的な一個の食器",
-      scenarioA: "保温性や素材、セット内容が違う場合",
-      scenarioB: "毎日使う前提で、複数個や仕様を揃える場合",
-      scenarioC: "安価な物を割ったり買い替えたりする回数を減らす考え方"
-    },
-    tableware: {
-      comparison: "一般的な一式の食器",
-      scenarioA: "枚数や材質、用途別の組み合わせが含まれる場合",
-      scenarioB: "毎回違う物を足さずに一度で揃える前提",
-      scenarioC: "使い捨てや追加購入を減らすための揃え方"
-    },
-    container: {
-      comparison: "一般的なキッチン用品",
-      scenarioA: "容量や仕様が用途に合わせて違う場合",
-      scenarioB: "日常で繰り返し使う前提で複数個を揃える場合",
-      scenarioC: "保存や持ち運びの手間を減らす使い方"
-    }
-  };
-  const profile = profiles[subtype] || profiles.container;
-  const recognition = getPriceRecognition("kitchenGoods", priceLevel, profile.comparison);
-
-  if (variant === 0) {
-    return `${item}に${formattedAmount}は、${recognition}。ただ、${profile.scenarioA}なら、単純な単品価格だけで比べるのは雑です。用途と耐久性が金額に見合っているなら、日常の道具を整えた費用として整理できます。`;
-  }
-
-  if (variant === 1) {
-    return `${formattedAmount}の${item}は、一般的な日用品として見れば強めです。ただ、${profile.scenarioB}なら、安い物を買い足していくより比較しやすい面があります。調理や片付けの手間が減る条件なら説明の筋は通ります。`;
-  }
-
-  return `${item}に${formattedAmount}を出したのは高めでも、${profile.scenarioC}なら、外食や使い捨ての積み重ねとの比較になります。単なる器具代ではなく、毎日の使い勝手をまとめて整える支出として見れば不自然ではありません。`;
+function uniqueCandidates(list) {
+  return [...new Set(list.map((text) => text.trim()).filter(Boolean))];
 }
 
-function buildFurnitureExcuse({ item, formattedAmount, priceLevel, itemTraits }, variant) {
-  const subtype = itemTraits.subtype;
-  const profiles = {
-    seat: {
-      comparison: "一般的な椅子や座具",
-      scenarioA: "姿勢や座り心地まで含めて選ぶ家具",
-      scenarioB: "毎日使う前提で、安価な物を短い周期で替える場合",
-      scenarioC: "作業姿勢や居場所の安定を優先する選び方"
-    },
-    desk: {
-      comparison: "一般的な机やテーブル",
-      scenarioA: "作業面積や強度まで条件に入る家具",
-      scenarioB: "部屋の使い方に合わせて一度で条件を満たす前提",
-      scenarioC: "狭さや不安定さで作業効率を落とさないための選び方"
-    },
-    storage: {
-      comparison: "一般的な収納家具",
-      scenarioA: "収納量や寸法まで合わせる必要がある場合",
-      scenarioB: "安価な収納を足し続けるより一度で整理する前提",
-      scenarioC: "部屋の使える面積や探し物の手間を減らす考え方"
-    },
-    bedding: {
-      comparison: "一般的な寝具",
-      scenarioA: "素材や厚み、使う期間を考えて選ぶ場合",
-      scenarioB: "短い周期で買い替えるより長めに使う前提",
-      scenarioC: "睡眠環境や置き場所をまとめて整える考え方"
-    }
-  };
-  const profile = profiles[subtype] || profiles.storage;
-  const recognition = getPriceRecognition("furniture", priceLevel, profile.comparison);
-
-  if (variant === 0) {
-    return `${item}に${formattedAmount}は、${recognition}。ただ、${profile.scenarioA}なら、単純な最安値だけで比較するのは適切ではありません。条件を満たす物を一度で選べたなら、生活空間を整える費用として説明できます。`;
-  }
-
-  if (variant === 1) {
-    return `${formattedAmount}の${item}は一度の出費としては軽くありません。ただ、${profile.scenarioB}なら、安価な物をいくつも試すより比較しやすいです。買い替え頻度や使える面積まで含めるなら、金額の見え方は変わります。`;
-  }
-
-  return `${item}に${formattedAmount}を出したのは、物を置くだけの話ではありません。${profile.scenarioC}なら、部屋の整理や作業効率との比較になります。日常で触れる時間が長い物ほど、条件を先に揃える支出として筋が通ります。`;
+function countSentences(text) {
+  return text
+    .split(/[。！？]/u)
+    .map((part) => part.trim())
+    .filter(Boolean).length;
 }
 
-function buildGeneralHouseholdExcuse({ item, formattedAmount, priceLevel, itemTraits }, variant) {
-  const subtype = itemTraits.subtype;
-  const profiles = {
-    rain: {
-      comparison: "一般的な一本の傘",
-      scenarioA: "耐久性や携帯性、素材が違う場合",
-      scenarioB: "壊れて買い直す回数を減らす前提",
-      scenarioC: "濡れて予定が崩れる場面を減らす考え方"
-    },
-    fabric: {
-      comparison: "一般的な生活用品",
-      scenarioA: "枚数や素材、用途別の使い分けが含まれる場合",
-      scenarioB: "まとめ買いや仕様を揃える前提",
-      scenarioC: "安い物を短い周期で替える回数を減らす考え方"
-    },
-    carry: {
-      comparison: "一般的な小物",
-      scenarioA: "素材や作り、長く使う前提が違う場合",
-      scenarioB: "毎日持つ物として条件を満たす前提",
-      scenarioC: "安価な物を買い直し続けないための選び方"
-    },
-    power: {
-      comparison: "一般的な電子小物",
-      scenarioA: "本数や規格、出力条件まで含まれる場合",
-      scenarioB: "必要な機器ぶんをまとめて揃える前提",
-      scenarioC: "足りないたびに買い足す手間を減らす考え方"
-    },
-    smallDevice: {
-      comparison: "一般的な小型生活用品",
-      scenarioA: "精度や明るさ、機能差がある場合",
-      scenarioB: "必要な性能を最初から満たす前提",
-      scenarioC: "使えない場面を減らすための備え方"
-    },
-    tool: {
-      comparison: "一般的な生活用の道具",
-      scenarioA: "耐久性や使いやすさ、仕様が違う場合",
-      scenarioB: "必要な場面で困らないよう先に揃える前提",
-      scenarioC: "その都度代用品で済ませる手間を減らす考え方"
-    }
-  };
-  const profile = profiles[subtype] || profiles.tool;
-  const recognition = getPriceRecognition("generalHouseholdItem", priceLevel, profile.comparison);
+function hasMeaningRepetition(text) {
+  const normalized = text.replace(/\s+/g, "");
+  const repeatedGroups = [
+    ["買い直し", "選び直し"],
+    ["趣味です", "趣味代"],
+    ["時間を買っ", "面倒を金で止め"],
+    ["高いです", "強気です"]
+  ];
 
-  if (variant === 0) {
-    return `${item}に${formattedAmount}は、${recognition}。ただ、${profile.scenarioA}なら、単純な単品価格だけで比べるのは早いです。用途と仕様が金額に見合っているなら、日常の不便を減らすための支出として整理できます。`;
-  }
-
-  if (variant === 1) {
-    return `${formattedAmount}の${item}は、一般的な生活用品としては強めに見えます。ただ、${profile.scenarioB}なら、安い物を何度も選ぶ場合との比較になります。条件を満たす物を先に確保した費用としてなら説明しやすいです。`;
-  }
-
-  return `${item}に${formattedAmount}を出したのは高めでも、${profile.scenarioC}なら、買い直しや手間の積み重ねとの比較になります。単なる小物代ではなく、生活の細かい不便を先に潰した支出として見る余地があります。`;
+  return repeatedGroups.some((group) => group.filter((word) => normalized.includes(word)).length >= 2);
 }
 
-function buildGenericProductExcuse({ item, formattedAmount, priceLevel, itemTraits }, variant) {
-  const subtype = itemTraits.subtype;
-  const profiles = {
-    bundle: {
-      comparison: "一般的な単品価格",
-      scenarioA: "単品ではなくセットやまとめ買い",
-      scenarioB: "数量や構成が通常品と違う場合",
-      scenarioC: "必要な条件を一度で揃える買い方"
-    },
-    houseware: {
-      comparison: "一般的な生活用品",
-      scenarioA: "素材や耐久性、用途の幅が違う場合",
-      scenarioB: "安価な物の買い直しを減らす前提",
-      scenarioC: "日常の使い勝手をまとめて整える選び方"
-    },
-    electronicAccessory: {
-      comparison: "一般的な周辺小物",
-      scenarioA: "規格や出力、互換性まで条件に入る場合",
-      scenarioB: "必要な本数や仕様をまとめて揃える前提",
-      scenarioC: "足りないたびに追加する手間を減らす考え方"
-    },
-    wearable: {
-      comparison: "一般的な身の回り品",
-      scenarioA: "素材や作り、使う場面が違う場合",
-      scenarioB: "条件に合う物を最初から選ぶ前提",
-      scenarioC: "安い物を買い直して迷う回数を減らす選び方"
-    },
-    generic: {
-      comparison: "一般的な単品価格",
-      scenarioA: "単品なのかセットなのか、日常用なのか専門用途なのかで比較基準が変わる場合",
-      scenarioB: "用途や品質で通常品と比べ方が変わる場合",
-      scenarioC: "安い物を何度も選び直さず、条件を一度で満たす選び方"
-    }
-  };
-  const profile = profiles[subtype] || profiles.generic;
-  const recognition = getPriceRecognition("otherProduct", priceLevel, profile.comparison);
+function validateGeneratedText(context, text) {
+  const normalized = text.trim();
 
-  if (variant === 0) {
-    return `${item}に${formattedAmount}は、${recognition}。ただ、${profile.scenarioA}なら、一般的な単品と同じ基準で比べるのは適切ではありません。用途と品質が金額に見合っているなら、一度で条件を満たす物を選んだ費用として説明できます。`;
+  if (!normalized) {
+    return false;
   }
 
-  if (variant === 1) {
-    return `${formattedAmount}の${item}は高く見えても、${profile.scenarioB}なら、通常品との単純比較では足りません。数量、仕様、品質まで含めて見合うなら、買い直しを減らす支出として整理できます。`;
+  if (normalized.length > 120) {
+    return false;
   }
 
-  return `${item}に${formattedAmount}を出したのは、物の名前だけで見ると強めでも、${profile.scenarioC}なら比較の軸は変わります。単なる勢いではなく、必要な条件を先に揃えた支払いとしてなら筋は通ります。`;
+  const sentenceCount = countSentences(normalized);
+  if (sentenceCount < 1 || sentenceCount > 3) {
+    return false;
+  }
+
+  if (BANNED_EMPTY_JUSTIFICATIONS.some((phrase) => normalized.includes(phrase))) {
+    return false;
+  }
+
+  if (hasMeaningRepetition(normalized)) {
+    return false;
+  }
+
+  if ((normalized.match(/高い/g) || []).length >= 3) {
+    return false;
+  }
+
+  if (!normalized.includes(context.itemName) && !normalized.includes(context.formattedAmount)) {
+    return false;
+  }
+
+  return true;
 }
 
-function buildGenericServiceExcuse({ item, formattedAmount }, variant) {
-  if (variant === 0) {
-    return `${item}に${formattedAmount}は安い話ではありません。ただ、サービスは物が残らないぶん、何を任せてどの手間を減らしたかで比較の軸が変わります。内容が具体的で、別の手段より時間や負担を減らせたなら、用途を限定した支出として説明できます。`;
+function scoreCandidate(context, text) {
+  let score = 4;
+
+  if (text.includes(context.itemName)) {
+    score += 1;
   }
 
-  if (variant === 1) {
-    return `${formattedAmount}の${item}は金額だけ見ると判断しづらいですが、比較すべきなのは物の有無ではなく、手間と時間です。自分で抱える場合との違いがはっきりしているなら、単なるぜいたくではなく作業の置き換えとして整理できます。`;
+  if (text.includes(context.formattedAmount)) {
+    score += 1;
   }
 
-  return `${item}に${formattedAmount}を払ったのは、目に見える品物を買うためではなく、何かの手間を外に出すためです。内容が具体的で、別のやり方より負担を減らせるなら、その差額には十分説明の余地があります。`;
-}
-
-function pickRandom(array) {
-  return array[Math.floor(Math.random() * array.length)];
-}
-
-function shuffle(array) {
-  const clone = [...array];
-
-  for (let i = clone.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [clone[i], clone[j]] = [clone[j], clone[i]];
+  if (text.length <= 100) {
+    score += 1;
   }
 
-  return clone;
+  if (countSentences(text) <= 2) {
+    score += 1;
+  }
+
+  if (/(趣味|ネタ|記念|装備|スポンサー費|コメント代|外注|罰金)/u.test(text)) {
+    score += 1;
+  }
+
+  if (/(専門用途|比較基準|構成全体|整理できます)/u.test(text)) {
+    score -= 2;
+  }
+
+  return score;
 }
 
 function getRecentList(key) {
@@ -1460,329 +1397,64 @@ function getRecentList(key) {
   return recentExcusesByKey.get(key);
 }
 
-function detectRepairContext(normalizedItemName, specificException, actionType) {
-  const isRepair = actionType === "repair";
-  const hasVehicleWord = specificException !== "nonVehicle" && hasAny(normalizedItemName, WORDS.vehicle);
-  const hasHomeDeviceWord = hasAny(normalizedItemName, WORDS.homeDevice);
-  const hasFashionRepairWord = hasAny(normalizedItemName, WORDS.fashionRepair);
-
-  let domain = "none";
-
-  if (isRepair && hasVehicleWord) {
-    domain = "vehicle";
-  } else if (isRepair && hasHomeDeviceWord) {
-    domain = "homeDevice";
-  } else if (isRepair && hasFashionRepairWord) {
-    domain = "fashion";
-  } else if (isRepair) {
-    domain = "generic";
-  }
-
-  return {
-    isRepair,
-    domain
-  };
+function pickRandom(list) {
+  return list[Math.floor(Math.random() * list.length)];
 }
 
-function detectItemType(normalizedItemName, repairContext, specificException) {
-  if (specificException === "hotelFood") {
-    return { categoryName: "food" };
+function shuffle(list) {
+  const cloned = [...list];
+
+  for (let index = cloned.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [cloned[index], cloned[swapIndex]] = [cloned[swapIndex], cloned[index]];
   }
 
-  if (specificException === "gameMicrotransaction") {
-    return { categoryName: "gameMicrotransaction" };
-  }
-
-  if (specificException === "healthApp") {
-    return { categoryName: "healthApp" };
-  }
-
-  if (specificException === "deviceReplacement") {
-    return { categoryName: "homeDevice" };
-  }
-
-  if (specificException === "giftExchange") {
-    return { categoryName: "gift" };
-  }
-
-  if (repairContext.domain === "vehicle") {
-    return { categoryName: "carMaintenance" };
-  }
-
-  if (repairContext.domain === "homeDevice") {
-    return { categoryName: "homeRepair" };
-  }
-
-  if (repairContext.domain === "fashion") {
-    return { categoryName: "fashionRepair" };
-  }
-
-  if (repairContext.domain === "generic") {
-    return { categoryName: "genericRepair" };
-  }
-
-  if (hasAny(normalizedItemName, WORDS.insurance)) {
-    return { categoryName: "insurance" };
-  }
-
-  if (specificException !== "nonMedical" && hasAny(normalizedItemName, WORDS.medicalCare)) {
-    return { categoryName: "medicalCare" };
-  }
-
-  if (hasAny(normalizedItemName, WORDS.creatorSupport)) {
-    return { categoryName: "creatorSupport" };
-  }
-
-  if (hasAny(normalizedItemName, WORDS.sponsorship)) {
-    return { categoryName: "sponsorship" };
-  }
-
-  if (hasAny(normalizedItemName, WORDS.premiumTransit)) {
-    return { categoryName: "premiumTransit" };
-  }
-
-  if (hasAny(normalizedItemName, WORDS.vehicleMaintenance)) {
-    return { categoryName: "carMaintenance" };
-  }
-
-  if (hasAny(normalizedItemName, WORDS.carCustom)) {
-    return { categoryName: "carCustom" };
-  }
-
-  if (hasAny(normalizedItemName, WORDS.vehiclePurchase)) {
-    return { categoryName: "vehiclePurchase" };
-  }
-
-  if (hasAny(normalizedItemName, WORDS.transport)) {
-    return { categoryName: "transport" };
-  }
-
-  if (hasAny(normalizedItemName, WORDS.travelStay)) {
-    return { categoryName: "travelStay" };
-  }
-
-  if (hasAny(normalizedItemName, WORDS.event)) {
-    return { categoryName: "event" };
-  }
-
-  if (hasAny(normalizedItemName, WORDS.timeSavingService)) {
-    return { categoryName: "timeSavingService" };
-  }
-
-  if (hasAny(normalizedItemName, WORDS.healthSubscription)) {
-    return { categoryName: "healthSubscription" };
-  }
-
-  if (hasAny(normalizedItemName, WORDS.healthService)) {
-    return { categoryName: "healthService" };
-  }
-
-  if (hasAny(normalizedItemName, WORDS.beautyService)) {
-    return { categoryName: "beautyService" };
-  }
-
-  if (hasAny(normalizedItemName, WORDS.beautyProduct)) {
-    return { categoryName: "beautyProduct" };
-  }
-
-  if (hasAny(normalizedItemName, WORDS.healthDevice)) {
-    return { categoryName: "healthDevice" };
-  }
-
-  if (hasAny(normalizedItemName, WORDS.food)) {
-    return { categoryName: "food" };
-  }
-
-  if (hasAny(normalizedItemName, WORDS.dailyGoods)) {
-    return { categoryName: "dailyGoods" };
-  }
-
-  if (hasAny(normalizedItemName, WORDS.gameEntertainment)) {
-    return { categoryName: "gameEntertainment" };
-  }
-
-  if (hasAny(normalizedItemName, WORDS.shoes)) {
-    return { categoryName: "shoes" };
-  }
-
-  if (hasAny(normalizedItemName, WORDS.bag)) {
-    return { categoryName: "bag" };
-  }
-
-  if (hasAny(normalizedItemName, WORDS.fashionAccessory)) {
-    return { categoryName: "fashionAccessory" };
-  }
-
-  if (hasAny(normalizedItemName, WORDS.fashionWear)) {
-    return { categoryName: "fashionWear" };
-  }
-
-  if (hasAny(normalizedItemName, WORDS.gift)) {
-    return { categoryName: "gift" };
-  }
-
-  if (hasAny(normalizedItemName, WORDS.subscription) || hasAny(normalizedItemName, WORDS.annualWords)) {
-    return { categoryName: "subscription" };
-  }
-
-  if (hasAny(normalizedItemName, WORDS.interior)) {
-    return { categoryName: "interior" };
-  }
-
-  if (hasAny(normalizedItemName, WORDS.workTool)) {
-    return { categoryName: "workTool" };
-  }
-
-  if (hasAny(normalizedItemName, WORDS.homeDevice)) {
-    return { categoryName: "homeDevice" };
-  }
-
-  if (hasAny(normalizedItemName, WORDS.stationery)) {
-    return { categoryName: "stationery" };
-  }
-
-  if (hasAny(normalizedItemName, WORDS.kitchenGoods)) {
-    return { categoryName: "kitchenGoods" };
-  }
-
-  if (hasAny(normalizedItemName, WORDS.furniture)) {
-    return { categoryName: "furniture" };
-  }
-
-  if (hasAny(normalizedItemName, WORDS.generalHouseholdItem)) {
-    return { categoryName: "generalHouseholdItem" };
-  }
-
-  if (hasAny(normalizedItemName, WORDS.serviceWords) || hasAny(normalizedItemName, WORDS.recurringWords)) {
-    return { categoryName: "otherService" };
-  }
-
-  return { categoryName: "otherProduct" };
-}
-
-function detectCategory(normalizedItemName, repairContext, specificException) {
-  return detectItemType(normalizedItemName, repairContext, specificException).categoryName;
+  return cloned;
 }
 
 function buildTemplateData(itemName, amount, context) {
-  const unitCost = calculateUnitCost(amount, context.billingPeriod);
-  const periodLabel =
-    context.billingPeriod === "monthly"
-      ? `月額${formatCurrency(amount)}なら、1日あたり約`
-      : context.billingPeriod === "yearly"
-        ? `年額${formatCurrency(amount)}なら、1日あたり約`
-        : "";
-
   return {
     item: itemName,
+    amount,
     formattedAmount: formatCurrency(amount),
-    perUse100: calculatePerUse(amount, 100),
-    perDay1Year: calculatePerDay(amount, 365),
-    perDay3Years: calculatePerDay(amount, 365 * 3),
-    priceLevel: context.priceLevel,
-    itemTraits: context.itemTraits,
-    periodLabel,
-    unitCost
+    categoryLabel: CATEGORY_LABELS[context.categoryName] || "買い物"
   };
 }
 
-function getCompatibleTemplates(categoryName) {
-  const definition = CATEGORY_DEFINITIONS[categoryName];
-  return definition ? definition.templates : [];
+function getTemplateSet(context) {
+  const subtype = context.itemTraits.subtype;
+  return TEMPLATE_MAP[subtype] || TEMPLATE_MAP.genericProduct;
 }
 
-function validateGeneratedText(context, text) {
-  return (
-    VALIDATION_RULES.every((rule) => !rule.test(context, text)) &&
-    !BANNED_EMPTY_JUSTIFICATIONS.some((phrase) => text.includes(phrase))
-  );
-}
-
-function scoreCandidate(context, text) {
-  let score = 0;
-
-  if (CATEGORY_REASON_PATTERNS[context.categoryName]?.some((pattern) => pattern.test(text))) {
-    score += 2;
-  }
-
-  if (text.includes(context.formattedAmount) || /円/.test(text)) {
-    score += 1;
-  }
-
-  if (POSITIVE_COMPARISON.test(text)) {
-    score += 2;
-  }
-
-  if (POSITIVE_LOSS_AVOID.test(text)) {
-    score += 2;
-  }
-
-  if (POSITIVE_TIME.test(text)) {
-    score += 1;
-  }
-
-  if (POSITIVE_CONDITIONAL.test(text)) {
-    score += 1;
-  }
-
-  if (NEGATIVE_GENERIC.test(text)) {
-    score -= 4;
-  }
-
-  if (BANNED_EMPTY_JUSTIFICATIONS.some((phrase) => text.includes(phrase))) {
-    score -= 8;
-  }
-
-  if (NEGATIVE_WEAK.test(text)) {
-    score -= 1;
-  }
-
-  if ((context.categoryName === "otherProduct" || context.categoryName === "otherService") && !/用途|比較|条件|品質|仕様|内容|手間/.test(text)) {
-    score -= 3;
-  }
-
-  return score;
-}
-
-function minimumScore(categoryName) {
-  if (["otherProduct", "otherService"].includes(categoryName)) {
-    return 5;
-  }
-
-  if (["gift", "subscription", "interior"].includes(categoryName)) {
-    return 5;
-  }
-
-  return 4;
+function getCategoryCandidates(context, data) {
+  const templateSet = getTemplateSet(context);
+  const bandTemplates = templateSet[context.priceLevel] || templateSet.normal || [];
+  return bandTemplates.map((template) => template(data));
 }
 
 function buildCandidateDetails(context) {
-  const templates = getCompatibleTemplates(context.categoryName);
   const data = buildTemplateData(context.itemName, context.amount, context);
+  const candidates = uniqueCandidates(getCategoryCandidates(context, data));
   const details = [];
 
-  for (const template of templates) {
-    const text = template(data);
-    if (!text) {
-      continue;
-    }
-
+  for (const text of candidates) {
     if (!validateGeneratedText(context, text)) {
       continue;
     }
 
-    const score = scoreCandidate(context, text);
-
-    if (score >= minimumScore(context.categoryName)) {
-      details.push({ text, score });
-    }
+    details.push({
+      text,
+      score: scoreCandidate(context, text)
+    });
   }
 
   return details;
 }
 
 function buildCandidates(context) {
-  return buildCandidateDetails(context).map((detail) => detail.text);
+  return buildCandidateDetails(context)
+    .filter((detail) => detail.score >= 5)
+    .map((detail) => detail.text);
 }
 
 function clearFieldErrors() {
@@ -1821,8 +1493,8 @@ function validateInputs() {
   clearFieldErrors();
 
   const rawItemName = itemNameInput.value;
-  const normalizedItemName = normalizeInput(rawItemName);
-  const displayItemName = toHalfWidth(rawItemName).trim().replace(/\s+/g, " ");
+  const displayItemName = cleanDisplayItemName(rawItemName);
+  const normalizedItemName = normalizeInput(displayItemName);
   const amountValue = amountInput.value.trim();
   const amount = Number(amountValue);
   let isValid = true;
@@ -1848,6 +1520,28 @@ function validateInputs() {
   };
 }
 
+function buildContext(itemName, normalizedItemName, amount) {
+  const specificException = detectSpecificExceptions(normalizedItemName);
+  const actionType = detectActionType(normalizedItemName);
+  const repairContext = detectRepairContext(normalizedItemName, specificException, actionType);
+  const categoryName = detectCategory(normalizedItemName, repairContext, specificException);
+
+  return {
+    itemName,
+    normalizedItemName,
+    amount,
+    formattedAmount: formatCurrency(amount),
+    categoryName,
+    priceLevel: detectPriceLevel(amount, categoryName),
+    itemTraits: detectItemTraits(normalizedItemName, categoryName),
+    specificException,
+    actionType,
+    repairContext,
+    billingPeriod: detectBillingPeriod(normalizedItemName),
+    consumableType: detectConsumableType(normalizedItemName, categoryName)
+  };
+}
+
 function generateExcuseText(itemName, normalizedItemName, amount) {
   const ambiguousHint = detectAmbiguousInput(normalizedItemName);
   if (ambiguousHint) {
@@ -1857,63 +1551,20 @@ function generateExcuseText(itemName, normalizedItemName, amount) {
     };
   }
 
-  const specificException = detectSpecificExceptions(normalizedItemName);
-  const actionType = detectActionType(normalizedItemName);
-  const repairContext = detectRepairContext(normalizedItemName, specificException, actionType);
-  const categoryName = detectCategory(normalizedItemName, repairContext, specificException);
-  const meta = CATEGORY_META[categoryName];
-
-  if (!meta) {
-    return {
-      ok: false,
-      message: "商品・サービス名だけでは、金額を正当化できる具体的な理由を作れませんでした。用途や内容が分かる名前で入力してください。"
-    };
-  }
-
-  if (categoryName === "otherProduct" && !isSpecificProductName(normalizedItemName)) {
-    return {
-      ok: false,
-      message: meta.suggestion
-    };
-  }
-
-  if (categoryName === "otherService" && !isSpecificServiceName(normalizedItemName)) {
-    return {
-      ok: false,
-      message: meta.suggestion
-    };
-  }
-
-  const itemTraits = detectItemTraits(normalizedItemName, categoryName);
-
-  const context = {
-    itemName,
-    normalizedItemName,
-    amount,
-    formattedAmount: formatCurrency(amount),
-    categoryName,
-    priceLevel: detectPriceLevel(amount, categoryName),
-    itemTraits,
-    specificException,
-    actionType,
-    repairContext,
-    billingPeriod: detectBillingPeriod(normalizedItemName),
-    consumableType: detectConsumableType(normalizedItemName, categoryName)
-  };
-
+  const context = buildContext(itemName, normalizedItemName, amount);
   const candidates = buildCandidates(context);
 
   if (candidates.length === 0) {
     return {
       ok: false,
-      message: meta.suggestion
+      message: "言い訳がまとまらなかったので、商品名をもう少し具体的にしてください。"
     };
   }
 
-  const recentKey = `${categoryName}:${normalizedItemName}:${amount}`;
+  const recentKey = `${context.categoryName}:${normalizedItemName}:${amount}`;
   const recentList = getRecentList(recentKey);
-  const unused = candidates.filter((candidate) => !recentList.includes(candidate));
-  const pool = unused.length > 0 ? unused : candidates;
+  const unusedCandidates = candidates.filter((candidate) => !recentList.includes(candidate));
+  const pool = unusedCandidates.length > 0 ? unusedCandidates : candidates;
   const excuse = pickRandom(shuffle(pool));
 
   recentList.push(excuse);
@@ -1923,8 +1574,8 @@ function generateExcuseText(itemName, normalizedItemName, amount) {
 
   return {
     ok: true,
-    categoryName,
-    categoryLabel: CATEGORY_LABELS[categoryName],
+    categoryName: context.categoryName,
+    categoryLabel: CATEGORY_LABELS[context.categoryName],
     excuse
   };
 }
@@ -1999,7 +1650,10 @@ amountInput.addEventListener("input", () => {
 });
 
 window.__shoppingExcuseDebug = {
+  APP_VERSION,
+  PRICE_THRESHOLDS,
   normalizeInput,
+  cleanDisplayItemName,
   detectAmbiguousInput,
   detectSpecificExceptions,
   detectItemType,
@@ -2012,9 +1666,10 @@ window.__shoppingExcuseDebug = {
   detectActionType,
   detectBillingPeriod,
   detectConsumableType,
-  getCompatibleTemplates,
+  getCategoryCandidates,
   buildCandidateDetails,
   buildCandidates,
+  buildContext,
   generateExcuseText,
   validateGeneratedText,
   scoreCandidate
