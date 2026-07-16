@@ -1,4 +1,4 @@
-const APP_VERSION = "2026.07.16-hybrid-3";
+const APP_VERSION = "2026.07.16-hybrid-4";
 
 const form = document.getElementById("excuse-form");
 const generateButton = document.getElementById("generate-button");
@@ -1932,12 +1932,8 @@ function normalizeWorkerTemplates(templates, itemName, amount) {
   );
 }
 
-function getAiMetaText(source) {
-  if (source === "cache") {
-    return "未登録商品のため、自動生成した言い訳を再利用しています。";
-  }
-
-  return "未登録商品のため、自動生成した言い訳です。";
+function getAiMetaText() {
+  return "";
 }
 
 function mapWorkerErrorToMessage(code) {
@@ -2025,7 +2021,7 @@ async function fetchAiTemplates(context) {
       const nextState = buildExcuseState(
         sessionKey,
         normalizedCandidates,
-        getAiMetaText(payload.source),
+        "",
         "ai"
       );
 
@@ -2137,7 +2133,7 @@ async function generateExcuse() {
       const fallbackState = buildExcuseState(
         buildAiSessionKey(context),
         fallbackCandidates,
-        "接続が不安定だったため、この場で組み立てた言い訳を表示しています。",
+        "",
         "fallback"
       );
 
@@ -2145,7 +2141,7 @@ async function generateExcuse() {
       currentExcuseState = fallbackState;
       const nextText = getNextExcuseFromState(fallbackState);
       lastExcuse = nextText;
-      showResult(nextText, fallbackState.metaText);
+      showResult(nextText, "");
       return;
     }
 
