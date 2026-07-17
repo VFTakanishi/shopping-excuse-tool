@@ -1,6 +1,8 @@
-const APP_VERSION = "2026.07.17-ai-connected-1";
-const WORKER_ENDPOINT =
-  "https://nameless-forest-d144shopping-excuse-tool-worker.innobd11.workers.dev/";
+const APP_VERSION = "2026.07.17-ai-complete-1";
+const WORKER_BASE_URL =
+  "https://nameless-forest-d144shopping-excuse-tool-worker.innobd11.workers.dev";
+const WORKER_GENERATE_URL = `${WORKER_BASE_URL}/generate`;
+const WORKER_HEALTH_URL = `${WORKER_BASE_URL}/health`;
 const WORKER_TIMEOUT_MS = 12000;
 
 const form = document.getElementById("excuse-form");
@@ -26,62 +28,160 @@ if (versionText) {
 }
 
 const TEXT = {
-  thinking: "\u8a00\u3044\u8a33\u3092\u8003\u3048\u3066\u3044\u307e\u3059\u2026",
-  copied: "\u30b3\u30d4\u30fc\u3057\u307e\u3057\u305f",
-  copyFailed: "\u30b3\u30d4\u30fc\u3067\u304d\u307e\u305b\u3093\u3067\u3057\u305f",
-  itemRequired: "\u5546\u54c1\u540d\u3092\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044\u3002",
-  amountRequired: "\u91d1\u984d\u3092\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044\u3002",
-  amountInvalid: "\u0031\u5186\u4ee5\u4e0a\u306e\u91d1\u984d\u3092\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044\u3002",
-  itemTooGeneric: "\u3082\u3046\u5c11\u3057\u5177\u4f53\u7684\u306a\u5546\u54c1\u540d\u306b\u3057\u3066\u304f\u3060\u3055\u3044\u3002",
+  thinking: "言い訳を考えています…",
+  copied: "コピーしました",
+  copyFailed: "コピーできませんでした",
+  itemRequired: "商品名を入力してください。",
+  amountRequired: "金額を入力してください。",
+  amountInvalid: "1円以上の金額を入力してください。",
+  itemTooGeneric: "もう少し具体的な商品名にしてください。",
   aiUnavailable:
-    "\u3053\u306e\u5546\u54c1\u306b\u5408\u3046\u81ea\u7136\u306a\u8a00\u3044\u8a33\u3092\u307e\u3060\u4f5c\u308c\u307e\u305b\u3093\u3067\u3057\u305f\u3002\u5225\u306e\u8a00\u3044\u65b9\u3067\u8a66\u3057\u3066\u304f\u3060\u3055\u3044\u3002",
-  workerMissing:
-    "AI\u901a\u4fe1\u5148\u304c\u307e\u3060\u8a2d\u5b9a\u3055\u308c\u3066\u3044\u307e\u305b\u3093\u3002",
+    "未登録の商品ですが、今はAIで自然な言い訳を作れませんでした。時間を置いて再度お試しください。",
+  workerMissing: "AI接続先の設定が見つかりません。",
   workerFailed:
-    "\u8a00\u3044\u8a33\u306e\u53d6\u5f97\u306b\u5931\u6557\u3057\u307e\u3057\u305f\u3002\u6642\u9593\u3092\u7f6e\u3044\u3066\u3082\u3046\u4e00\u5ea6\u8a66\u3057\u3066\u304f\u3060\u3055\u3044\u3002",
-  yen: "\u5186"
+    "言い訳の生成に失敗しました。通信状態を確認して再度お試しください。",
+  yen: "円"
 };
 
 const GENERIC_ONLY_NAMES = new Set([
-  "\u3082\u306e",
-  "\u30e2\u30ce",
-  "\u3084\u3064",
-  "\u305d\u308c",
-  "\u5546\u54c1",
-  "\u54c1\u7269",
-  "\u30b5\u30fc\u30d3\u30b9",
-  "\u30bb\u30c3\u30c8",
-  "\u30d7\u30e9\u30f3"
+  "もの",
+  "モノ",
+  "やつ",
+  "それ",
+  "商品",
+  "品物",
+  "サービス",
+  "セット",
+  "プラン"
 ]);
 
 const SUBTYPE_RULES = [
-  { subtype: "gacha", keywords: ["\u30ac\u30c1\u30e3\u30ac\u30c1\u30e3", "\u30ab\u30d7\u30bb\u30eb\u30c8\u30a4", "\u30ac\u30c1\u30e3"] },
-  { subtype: "superchat", keywords: ["\u30b9\u30d1\u30c1\u30e3", "\u30b9\u30fc\u30d1\u30fc\u30c1\u30e3\u30c3\u30c8", "super chat", "\u6295\u3052\u92ad", "\u914d\u4fe1\u8005\u652f\u63f4"] },
-  { subtype: "sponsor", keywords: ["\u30b9\u30dd\u30f3\u30b5\u30fc\u67a0", "\u5354\u8cdb", "\u30b9\u30dd\u30f3\u30b5\u30fc"] },
-  { subtype: "greenCar", keywords: ["\u30b0\u30ea\u30fc\u30f3\u8eca"] },
-  { subtype: "vehiclePurchase", keywords: ["\u81ea\u52d5\u8eca", "\u4e2d\u53e4\u8eca", "\u8efd\u81ea\u52d5\u8eca", "\u4e57\u7528\u8eca", "\u8eca\u4e21\u8cfc\u5165", "\u30bb\u30ab\u30f3\u30c9\u30ab\u30fc"] },
-  { subtype: "aircon", keywords: ["\u30a8\u30a2\u30b3\u30f3", "\u30af\u30fc\u30e9\u30fc"] },
-  { subtype: "seitai", keywords: ["\u6574\u4f53", "\u30de\u30c3\u30b5\u30fc\u30b8"] },
-  { subtype: "sneakers", keywords: ["\u30b9\u30cb\u30fc\u30ab\u30fc", "\u9774"] },
-  { subtype: "bag", keywords: ["\u30d0\u30c3\u30b0", "\u30ab\u30d0\u30f3", "\u9784", "\u30ea\u30e5\u30c3\u30af", "\u30c8\u30fc\u30c8"] },
-  { subtype: "denim", keywords: ["\u30c7\u30cb\u30e0", "\u30b8\u30fc\u30f3\u30ba"] },
-  { subtype: "clothes", keywords: ["\u670d", "\u30b7\u30e3\u30c4", "\u30b3\u30fc\u30c8", "\u30b8\u30e3\u30b1\u30c3\u30c8"] },
-  { subtype: "seafood", keywords: ["\u6d77\u9bae\u4e3c"] },
-  { subtype: "meal", keywords: ["\u713c\u8089", "\u5bff\u53f8", "\u30e9\u30f3\u30c1", "\u30c7\u30a3\u30ca\u30fc", "\u3054\u306f\u3093", "\u98df\u4e8b"] },
-  { subtype: "hotel", keywords: ["\u30db\u30c6\u30eb", "\u65c5\u9928", "\u5bbf"] },
-  { subtype: "ticket", keywords: ["\u30c1\u30b1\u30c3\u30c8", "\u30e9\u30a4\u30d6"] },
-  { subtype: "game", keywords: ["\u30b2\u30fc\u30e0", "\u6f2b\u753b", "\u30d5\u30a3\u30ae\u30e5\u30a2"] },
-  { subtype: "device", keywords: ["\u30d1\u30bd\u30b3\u30f3", "\u30b9\u30de\u30db", "\u5de5\u5177", "pc"] },
-  { subtype: "beauty", keywords: ["\u7f8e\u5bb9\u6db2", "\u5316\u7ca7\u54c1", "\u30b3\u30b9\u30e1"] },
-  { subtype: "living", keywords: ["\u5bb6\u96fb", "\u5bb6\u5177"] }
+  {
+    subtype: "aircon",
+    exact: ["エアコン", "ルームエアコン"],
+    patterns: [/^エアコン(?:\s|$)/u, /^ルームエアコン/u],
+    excludes: ["クーラーボックス", "cpuクーラー"]
+  },
+  {
+    subtype: "laptop",
+    exact: ["macbook", "macbook air", "macbook pro"],
+    patterns: [/^macbook/u, /ノートpc/u, /ノートパソコン/u, /ラップトップ/u],
+    excludes: []
+  },
+  {
+    subtype: "pc",
+    exact: ["パソコン", "pc", "デスクトップpc", "デスクトップパソコン"],
+    patterns: [/(^|[^a-z])pc([^a-z]|$)/iu, /パソコン/u, /ゲーミングpc/u],
+    excludes: []
+  },
+  {
+    subtype: "smartphone",
+    exact: ["スマホ", "iphone", "android"],
+    patterns: [/スマホ/u, /iphone/u, /android/u],
+    excludes: ["スマホケース", "スマホ修理", "スマホゲーム課金"]
+  },
+  {
+    subtype: "smartphoneCase",
+    exact: ["スマホケース", "iphoneケース"],
+    patterns: [/スマホケース/u, /iphoneケース/u],
+    excludes: []
+  },
+  {
+    subtype: "smartphoneRepair",
+    exact: ["スマホ修理", "iphone修理"],
+    patterns: [/スマホ修理/u, /iphone修理/u],
+    excludes: []
+  },
+  {
+    subtype: "mobileGameCharge",
+    exact: ["スマホゲーム課金", "ゲーム課金"],
+    patterns: [/スマホゲーム課金/u, /ゲーム課金/u],
+    excludes: []
+  },
+  {
+    subtype: "sneakers",
+    exact: ["スニーカー"],
+    patterns: [/スニーカー/u],
+    excludes: []
+  },
+  {
+    subtype: "bag",
+    exact: ["バッグ", "カバン", "鞄", "リュック", "トート"],
+    patterns: [/バッグ/u, /カバン/u, /鞄/u, /リュック/u, /トート/u],
+    excludes: []
+  },
+  {
+    subtype: "seitai",
+    exact: ["整体", "マッサージ"],
+    patterns: [/整体/u, /マッサージ/u],
+    excludes: []
+  },
+  {
+    subtype: "greenCar",
+    exact: ["グリーン車"],
+    patterns: [/グリーン車/u],
+    excludes: []
+  },
+  {
+    subtype: "seafoodBowl",
+    exact: ["海鮮丼"],
+    patterns: [/海鮮丼/u],
+    excludes: []
+  },
+  {
+    subtype: "superchat",
+    exact: ["スパチャ", "スーパーチャット", "投げ銭"],
+    patterns: [/スパチャ/u, /スーパーチャット/u, /投げ銭/u, /配信者支援/u],
+    excludes: []
+  },
+  {
+    subtype: "sponsor",
+    exact: ["スポンサー枠"],
+    patterns: [/スポンサー枠/u, /協賛/u],
+    excludes: []
+  },
+  {
+    subtype: "carPurchase",
+    exact: ["自動車", "中古車", "軽自動車", "乗用車", "車両購入"],
+    patterns: [/中古車/u, /軽自動車/u, /乗用車/u, /車両購入/u, /^自動車$/u],
+    excludes: ["自動車税", "自動車保険", "自動車部品"]
+  },
+  {
+    subtype: "chair",
+    exact: ["椅子", "チェア"],
+    patterns: [/椅子/u, /チェア/u],
+    excludes: []
+  },
+  {
+    subtype: "earphone",
+    exact: ["イヤホン", "ワイヤレスイヤホン", "airpods"],
+    patterns: [/イヤホン/u, /airpods/u],
+    excludes: []
+  },
+  {
+    subtype: "pen",
+    exact: ["ボールペン", "ペン"],
+    patterns: [/ボールペン/u, /ペン/u],
+    excludes: ["ペンケース"]
+  },
+  {
+    subtype: "gacha",
+    exact: ["ガチャガチャ", "ガチャ", "カプセルトイ"],
+    patterns: [/ガチャガチャ/u, /カプセルトイ/u, /^ガチャ$/u],
+    excludes: []
+  }
 ];
 
 let currentState = null;
 let lastExcuse = "";
 let copyTimerId = null;
+let isGenerating = false;
 
 function normalizeText(value) {
-  return String(value || "").normalize("NFKC").replace(/\s+/gu, " ").trim();
+  return String(value || "")
+    .normalize("NFKC")
+    .replace(/\s+/gu, " ")
+    .trim();
 }
 
 function normalizeKey(value) {
@@ -111,18 +211,34 @@ function shuffle(items) {
 function unique(items) {
   const seen = new Set();
   return items.filter((item) => {
-    if (!item || seen.has(item)) {
-      return false;
-    }
+    if (!item || seen.has(item)) return false;
     seen.add(item);
     return true;
   });
 }
 
+function matchesRule(normalizedItem, rule) {
+  const hasExclude = (rule.excludes || []).some((term) =>
+    normalizedItem.includes(normalizeKey(term))
+  );
+  if (hasExclude) {
+    return false;
+  }
+
+  const exactMatch = (rule.exact || []).some(
+    (term) => normalizedItem === normalizeKey(term)
+  );
+  if (exactMatch) {
+    return true;
+  }
+
+  return (rule.patterns || []).some((pattern) => pattern.test(normalizedItem));
+}
+
 function detectSubtype(item) {
-  const normalized = normalizeKey(item);
+  const normalizedItem = normalizeKey(item);
   for (const rule of SUBTYPE_RULES) {
-    if (rule.keywords.some((keyword) => normalized.includes(normalizeKey(keyword)))) {
+    if (matchesRule(normalizedItem, rule)) {
       return rule.subtype;
     }
   }
@@ -146,84 +262,98 @@ function buildLocalCandidates(context) {
       return [
         `${context.item}に${context.formattedAmount}でも、100回履く前提なら1回あたり${context.per100}です。よく履く一足なら、毎回の満足で十分回収できます。`,
         `${context.formattedAmount}の${context.item}は高く見えても、1年間ちゃんと履くなら1日あたり${context.perYear}です。足元が決まると出かける面倒が減るので、ただの靴代では終わりません。`,
-        `${context.item}は出番が多いなら強いです。${context.formattedAmount}でも、毎回これを履けば済む状態になるなら、迷う時間までまとめて買っています。`
+        `${context.item}は出番が多いなら強いです。毎回これを履けば済む状態になるなら、迷う時間までまとめて買ったと考えられます。`
       ];
     case "bag":
       return [
-        `${context.item}に${context.formattedAmount}でも、毎回これで荷物がまとまるなら高すぎません。使うたびに入れ替える手間が減るので、地味に元を取りやすいです。`,
-        `${context.formattedAmount}の${context.item}は強めですが、服に合わせやすくて毎回これで済むなら十分実用です。出番が多いなら、しまいっぱなしの安物よりましです。`,
-        `${context.item}は飾りではなく、荷物をちゃんと運ぶための道具です。${context.formattedAmount}で使いやすさと合わせやすさが取れるなら、納得しやすい出費です。`
-      ];
-    case "greenCar":
-      return [
-        `${context.item}に${context.formattedAmount}は上乗せ感がありますが、移動で潰れるのを防ぐ出費なら筋は通ります。着いたあとにちゃんと動けるなら、必要な経費です。`,
-        `${context.formattedAmount}の${context.item}はぜいたくというより、疲れを買わないためのお金です。移動で消耗しすぎて予定を崩すくらいなら、その前に防いだ方が安いです。`
+        `${context.item}に${context.formattedAmount}でも、毎回これで荷物がまとまるなら高すぎません。入れ替える手間が減るので、地味に元を取りやすいです。`,
+        `${context.formattedAmount}の${context.item}は強めですが、服に合わせやすくて毎回これで済むなら十分実用です。`,
+        `${context.item}は飾りではなく道具です。使いやすさと合わせやすさが揃うなら、納得しやすい出費です。`
       ];
     case "seitai":
       return [
-        `${context.item}に${context.formattedAmount}は一瞬ためらいますが、体が整って楽になるなら十分回収できます。しんどいまま引っ張るより、先に戻した方が生産性が上がります。`,
-        `${context.formattedAmount}の${context.item}は気休めなら高いですが、体の重さが抜けて動きやすくなるなら話は別です。仕事も生活も回しやすくなるので、結果的に得しています。`
+        `${context.item}に${context.formattedAmount}は一瞬ためらいますが、体が整って楽になるなら十分回収できます。しんどいまま引っ張るより先に戻した方が早いです。`,
+        `${context.formattedAmount}の${context.item}は気休めなら高いですが、動きやすくなるなら話は別です。仕事も生活も回しやすくなるので結果的に得しています。`
+      ];
+    case "greenCar":
+      return [
+        `${context.item}に${context.formattedAmount}は上乗せ感がありますが、移動で潰れるのを防ぐ出費なら筋は通ります。着いたあとにちゃんと動けるなら必要経費です。`,
+        `${context.formattedAmount}の${context.item}はぜいたくというより、疲れを買わないためのお金です。移動で予定を崩すくらいなら先に防いだ方が安いです。`
+      ];
+    case "seafoodBowl":
+      return [
+        `${context.item}に${context.formattedAmount}は安くないですが、食べたいものを一回でちゃんと満たしたなら十分です。微妙な外食を重ねるより出費が増えにくいです。`,
+        `${context.formattedAmount}の${context.item}は勢いに見えて、満足を一発で取りにいく出費でもあります。変に妥協して別の店をはしごするより話が早いです。`
       ];
     case "superchat":
       return [
-        `${context.item}に${context.formattedAmount}は大きいですが、物を買ったのではなく配信への支援に使ったお金です。応援予算の中で一度にまとめたなら、用途はかなりはっきりしています。`,
-        `${context.formattedAmount}の${context.item}は娯楽費としては重めです。ただ、見るだけで終わらせず、配信や活動費に直接寄せた支出だと考えると整理しやすいです。`
+        `${context.item}に${context.formattedAmount}は大きいですが、物を買ったのではなく配信への支援に使ったお金です。応援予算の中でまとめたなら用途はかなり明確です。`,
+        `${context.formattedAmount}の${context.item}は娯楽費としては重めです。ただ、配信や活動費に直接寄せた支出だと考えると整理しやすいです。`
       ];
     case "sponsor":
       return [
-        `${context.item}に${context.formattedAmount}は軽い額ではありませんが、支援の名目でまとまった金額を出した形です。細かく散らすより予算を切りやすいなら、むしろ管理しやすいです。`,
-        `${context.item}は商品代ではなく、活動を支えるための出費です。${context.formattedAmount}を応援予算として最初から切っていたなら、衝動買いとは少し話が違います。`
+        `${context.item}に${context.formattedAmount}は軽い額ではありませんが、支援の名目でまとまった金額を出した形です。細かく散らすより予算を切りやすいなら管理しやすいです。`,
+        `${context.item}は商品代ではなく活動を支えるための出費です。最初から応援予算として切っていたなら衝動買いとは少し違います。`
       ];
-    case "vehiclePurchase":
+    case "carPurchase":
       return [
         `${context.item}に${context.formattedAmount}は安くは見えませんが、車は購入額だけでは決まりません。維持費や修理費を見ても使える状態なら、移動手段を確保する初期費用として筋が通ります。`,
-        `${context.formattedAmount}の${context.item}は本体価格だけなら判断できません。ただ、通勤や送迎や荷物運びに使えて、タクシーやレンタカーを減らせるなら十分比較対象になります。`
+        `${context.formattedAmount}の${context.item}は本体価格だけでは判断できません。ただ、通勤や送迎や荷物運びに使えて、タクシーやレンタカーを減らせるなら比較対象になります。`
       ];
     case "aircon":
       return [
         `${context.item}に${context.formattedAmount}は大きいですが、季節になるたび困る物を先に片づけたと思えば自然です。我慢で体調を崩す方が高くつきやすいです。`,
-        `${context.formattedAmount}の${context.item}は家電としては普通に重い出費です。ただ、暑さや寒さで眠れない時間が減るなら、生活の土台を買い直したに近いです。`
+        `${context.formattedAmount}の${context.item}は家電としては重い出費ですが、眠れない時間が減るなら生活の土台を買い直したのに近いです。`
+      ];
+    case "laptop":
+      return [
+        `${context.item}に${context.formattedAmount}は大きいですが、画面とキーボードとトラックパッドを毎日触るなら作業の詰まりを減らす投資です。`,
+        `${context.formattedAmount}の${context.item}は高く見えても、起動の遅さや熱や不安定さで毎回止まるよりは話が早いです。`
+      ];
+    case "pc":
+      return [
+        `${context.item}に${context.formattedAmount}は大きいですが、使う時間が長い道具は元を取りやすいです。毎回の待ち時間が減るなら十分説明できます。`,
+        `${context.formattedAmount}の${context.item}は高く見えても、作業時間が減るなら理屈は立ちます。毎日触る物ほど差が効きます。`
+      ];
+    case "smartphone":
+      return [
+        `${context.item}に${context.formattedAmount}は強めですが、毎日使う時間が長い物なので不便の解消がそのまま回収につながります。`,
+        `${context.formattedAmount}の${context.item}は高く見えても、電池や動作のストレスが減るなら生活全体の詰まりを減らす出費です。`
+      ];
+    case "smartphoneCase":
+      return [
+        `${context.item}に${context.formattedAmount}なら、落とした一回で本体修理に行くよりずっと安いです。保険料に近い出費だと考える方が自然です。`,
+        `${context.formattedAmount}の${context.item}は小さい買い物ですが、本体を雑に扱わずに済むなら十分役目を果たしています。`
+      ];
+    case "smartphoneRepair":
+      return [
+        `${context.item}に${context.formattedAmount}は痛いですが、使える本体を延命できるなら買い替えより話が早いです。`,
+        `${context.formattedAmount}の${context.item}は出費としては重くても、今の端末をそのまま使い続けられるなら十分理由になります。`
+      ];
+    case "mobileGameCharge":
+      return [
+        `${context.item}に${context.formattedAmount}は実用品ではありませんが、最初から遊びの予算として切っているなら筋は通ります。`,
+        `${context.formattedAmount}の${context.item}は軽い額ではないですが、その期間ちゃんと遊ぶ目的があるなら散発的に崩すよりは管理しやすいです。`
+      ];
+    case "chair":
+      return [
+        `${context.item}に${context.formattedAmount}は大きく見えても、毎日座る物なら体への負担を減らす効果がそのまま回収につながります。`,
+        `${context.formattedAmount}の${context.item}は生活用品としては重めですが、長時間の姿勢が少しでも楽になるなら削る所ではありません。`
+      ];
+    case "earphone":
+      return [
+        `${context.item}に${context.formattedAmount}でも、毎日使うなら十分回収しやすいです。接続や音切れの小さなストレスが消えるだけでも価値があります。`,
+        `${context.formattedAmount}の${context.item}は高く見えても、通勤や作業時間の快適さを毎回買い直さずに済むなら筋は通ります。`
+      ];
+    case "pen":
+      return [
+        `${context.item}に${context.formattedAmount}なら、毎日手に取る道具としてはそこまで大げさではありません。書くたびに小さな不満が減るなら十分です。`,
+        `${context.formattedAmount}の${context.item}は小さい出費でも、使う頻度が高い道具ほど地味に満足が積み上がります。`
       ];
     case "gacha":
       return [
-        `${context.item}に${context.formattedAmount}なら、物を増やしたというより遊び代です。数千円でその場の面白さと気分転換が買えたなら、そこまで重い話ではありません。`,
-        `${context.formattedAmount}の${context.item}は残る物より、その場の楽しさに払ったお金です。映画一本とか軽いレジャーと比べるなら、極端にずれてはいません。`
-      ];
-    case "seafood":
-      return [
-        `${context.item}に${context.formattedAmount}は安くないですが、食べたいものを一回でちゃんと満たしたなら十分です。微妙な外食を重ねるより、むしろ出費が増えにくいです。`,
-        `${context.formattedAmount}の${context.item}は勢いに見えて、満足を一発で取りにいく出費でもあります。変に妥協して別の店をはしごするより、話が早いです。`
-      ];
-    case "meal":
-      return [
-        `${context.item}に${context.formattedAmount}は安くないですが、食事はその場で終わりではありません。ちゃんと満足して余計な買い足しが減るなら、むしろ話が早いです。`,
-        `${context.formattedAmount}の${context.item}はぜいたく寄りでも、気分転換と満足を一度で済ませたと思えば整理しやすいです。`
-      ];
-    case "hotel":
-      return [
-        `${context.item}に${context.formattedAmount}は高く見えても、寝る場所代だけではありません。移動の疲れを残さず予定をこなせるなら、時間と体力を買った出費です。`,
-        `${context.item}は回数で割る物ではなく、その日をちゃんと成立させるための費用です。${context.formattedAmount}で移動計画が無理なく回るなら十分説明できます。`
-      ];
-    case "clothes":
-    case "denim":
-      return [
-        `${context.item}に${context.formattedAmount}は軽くないですが、ちゃんと着るなら話は変わります。着るたびに迷いが減る服は、思ったより仕事をします。`,
-        `${context.formattedAmount}の${context.item}でも、合わせやすくて出番が多いなら十分回収できます。安いのに不満を抱え続けるより、先に片づけた方が早いです。`
-      ];
-    case "device":
-      return [
-        `${context.item}に${context.formattedAmount}は大きいですが、使う時間が長い道具は元を取りやすいです。遅さや不便で毎回つまずくなら、先に替えた方が早いです。`,
-        `${context.formattedAmount}の${context.item}は高く見えても、作業時間が減るなら理屈が立ちます。毎日触る物ほど、性能差がそのまま効率差になります。`
-      ];
-    case "beauty":
-      return [
-        `${context.item}に${context.formattedAmount}は軽くないですが、見た目を整える費用はゼロにはできません。毎朝の迷いが減るなら、思ったより実用です。`,
-        `${context.formattedAmount}の${context.item}はぜいたくに見えても、身だしなみを雑にしないための出費です。使うたびに整いやすいなら、十分回収できます。`
-      ];
-    case "living":
-      return [
-        `${context.item}に${context.formattedAmount}は大きめでも、家で毎日使う物は元を取りやすいです。ちょっとした不便を毎日受ける方が、あとで効いてきます。`,
-        `${context.formattedAmount}の${context.item}は生活費としては重いですが、使うたびに手間が減るなら十分理由になります。`
+        `${context.item}に${context.formattedAmount}なら、物を増やしたというより遊び代です。数百円や数千円でその場の面白さを買えたなら役目は果たしています。`,
+        `${context.formattedAmount}の${context.item}は残る物より、その場の楽しさに払ったお金です。軽いレジャーと比べるなら極端にずれてはいません。`
       ];
     default:
       return [];
@@ -243,27 +373,24 @@ function buildLocalState(item, amount) {
 function fillTemplate(template, item, amount) {
   return template
     .replace(/\{item\}/gu, item)
-    .replace(/\{amount\}|\{formattedAmount\}/gu, formatYen(amount));
+    .replace(/\{amount\}/gu, formatYen(amount));
 }
 
 function isSafeAiText(text) {
   if (!text) return false;
   if (text.length < 45 || text.length > 120) return false;
-  if (/<|>|https?:\/\/|```|\[|\]|\{item\}.*\{item\}/u.test(text)) return false;
+  if (/<|>|https?:\/\/|```|\[[^\]]*\]/u.test(text)) return false;
   return true;
 }
 
-function buildAiState(item, amount, templates) {
-  const candidates = unique(
-    templates
-      .map((template) => fillTemplate(template, item, amount))
-      .map((text) => normalizeText(text))
-      .filter(isSafeAiText)
-  );
-
+function buildAiState(item, amount, templates, source) {
   return {
-    source: "ai",
-    candidates,
+    source,
+    candidates: unique(
+      templates
+        .map((template) => normalizeText(fillTemplate(template, item, amount)))
+        .filter(isSafeAiText)
+    ),
     index: 0,
     meta: ""
   };
@@ -287,6 +414,16 @@ function showStatus(message) {
 function hideStatus() {
   generationStatus.textContent = "";
   generationStatus.classList.add("hidden");
+}
+
+function resetResultState() {
+  currentState = null;
+  lastExcuse = "";
+  resultText.textContent = "";
+  resultMeta.textContent = "";
+  resultMeta.classList.add("hidden");
+  resultSection.classList.add("hidden");
+  copyStatus.textContent = "";
 }
 
 function validateInputs() {
@@ -316,9 +453,7 @@ function validateInputs() {
     hasError = true;
   }
 
-  if (hasError) {
-    return null;
-  }
+  if (hasError) return null;
 
   return {
     item,
@@ -342,109 +477,112 @@ function showResult(text, meta = "") {
 }
 
 function nextExcuse() {
-  if (!currentState || currentState.candidates.length === 0) {
-    return;
-  }
+  if (!currentState || currentState.candidates.length === 0) return;
   const text = currentState.candidates[currentState.index];
   currentState.index = (currentState.index + 1) % currentState.candidates.length;
   showResult(text, currentState.meta);
 }
 
-async function requestAiExcuses(item, amount, priceLevel) {
-  if (!WORKER_ENDPOINT) {
-    throw new Error("WORKER_ENDPOINT_MISSING");
-  }
-
+async function requestAiExcuses(item, amount) {
   const controller = new AbortController();
-  const timeoutId = window.setTimeout(() => controller.abort(), WORKER_TIMEOUT_MS);
+  const timerId = window.setTimeout(() => controller.abort(), WORKER_TIMEOUT_MS);
 
   try {
-    const response = await fetch(WORKER_ENDPOINT, {
+    const response = await fetch(WORKER_GENERATE_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({
-        item,
-        amount,
-        normalizedItem: normalizeText(item),
-        priceLevel
-      }),
+      body: JSON.stringify({ item, amount }),
       signal: controller.signal
     });
 
-    const json = await response.json().catch(() => null);
-
-    if (!response.ok || !json || json.status !== "success") {
-      throw new Error(json?.code || `WORKER_${response.status}`);
+    const payload = await response.json().catch(() => null);
+    if (!response.ok || !payload) {
+      throw new Error(payload?.code || `HTTP_${response.status}`);
     }
-
-    if (!Array.isArray(json.templates)) {
+    if (payload.status !== "success" || !Array.isArray(payload.templates)) {
       throw new Error("AI_INVALID_RESPONSE");
     }
 
-    return json.templates
-      .map((entry) => normalizeText(entry?.template || entry))
-      .filter(Boolean);
+    return payload;
   } finally {
-    window.clearTimeout(timeoutId);
+    window.clearTimeout(timerId);
   }
 }
 
-async function generateAiExcuse(item, amount, priceLevel) {
-  const templates = await requestAiExcuses(item, amount, priceLevel);
-  const aiState = buildAiState(item, amount, templates);
-
-  if (aiState.candidates.length === 0) {
-    throw new Error("AI_EMPTY");
+function mapWorkerError(code) {
+  switch (code) {
+    case "AI_KEY_MISSING":
+      return "AI接続設定が不足しています。";
+    case "MODEL_NOT_FOUND":
+      return "AIモデルの設定に問題があります。";
+    case "AI_RATE_LIMITED":
+      return "AI側の利用上限に達しました。しばらく待って再度お試しください。";
+    case "AI_TIMEOUT":
+      return "AIからの応答が間に合いませんでした。再度お試しください。";
+    case "ORIGIN_NOT_ALLOWED":
+      return "このページからはAI接続を利用できません。公開ページからお試しください。";
+    case "CACHE_NOT_CONFIGURED":
+      return "AIキャッシュ設定が不足しています。";
+    case "AI_INVALID_RESPONSE":
+      return TEXT.aiUnavailable;
+    default:
+      return TEXT.workerFailed;
   }
+}
 
-  currentState = aiState;
+async function generateLocalExcuse(validated) {
+  currentState = buildLocalState(validated.item, validated.amount);
   nextExcuse();
 }
 
-function generateLocalExcuse(item, amount) {
-  currentState = buildLocalState(item, amount);
-  if (!currentState.candidates.length) {
-    showGenerationError(TEXT.aiUnavailable);
-    return;
+async function generateAiExcuse(validated) {
+  const payload = await requestAiExcuses(validated.item, validated.amount);
+  currentState = buildAiState(
+    validated.item,
+    validated.amount,
+    payload.templates,
+    payload.source || "ai"
+  );
+  if (currentState.candidates.length === 0) {
+    throw new Error("AI_INVALID_RESPONSE");
   }
   nextExcuse();
 }
 
 async function generateExcuse() {
-  const validated = validateInputs();
-  if (!validated) {
-    return;
-  }
+  if (isGenerating) return;
 
+  const validated = validateInputs();
+  if (!validated) return;
+
+  isGenerating = true;
+  resetResultState();
   showStatus(TEXT.thinking);
 
   try {
     if (validated.subtype !== "generic") {
-      generateLocalExcuse(validated.item, validated.amount);
+      await generateLocalExcuse(validated);
       return;
     }
 
-    await generateAiExcuse(validated.item, validated.amount, validated.priceLevel);
+    await generateAiExcuse(validated);
   } catch (error) {
     const code = error instanceof Error ? error.message : "";
     if (code === "WORKER_ENDPOINT_MISSING") {
       showGenerationError(TEXT.workerMissing);
-    } else if (code === "AI_EMPTY" || code === "AI_INVALID_RESPONSE") {
-      showGenerationError(TEXT.aiUnavailable);
     } else {
-      showGenerationError(TEXT.workerFailed);
+      showGenerationError(mapWorkerError(code));
     }
   } finally {
+    isGenerating = false;
     hideStatus();
   }
 }
 
 async function copyExcuse() {
-  if (!lastExcuse) {
-    return;
-  }
+  if (!lastExcuse) return;
   try {
     await navigator.clipboard.writeText(lastExcuse);
     copyStatus.textContent = TEXT.copied;
