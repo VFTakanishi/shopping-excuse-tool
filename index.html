@@ -4,38 +4,38 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#f6f7f8" />
-    <meta name="app-version" content="2026.07.16-hybrid-3" />
-    <title>買い物言い訳ツール</title>
-    <link rel="stylesheet" href="style.css?v=20260716-hybrid-3" />
+    <meta name="app-version" content="2026.07.17-human-logic-2" />
+    <title>&#36023;&#12356;&#29289;&#35328;&#12356;&#35379;&#12484;&#12540;&#12523;</title>
+    <link rel="stylesheet" href="style.css?v=20260717-human-logic-2" />
   </head>
   <body>
     <main class="page">
       <section class="card" aria-labelledby="app-title">
-        <p class="eyebrow">くだらないけど一瞬だけ納得</p>
-        <h1 id="app-title">買い物言い訳ツール</h1>
+        <p class="eyebrow">&#23569;&#12375;&#12384;&#12369;&#35328;&#12356;&#36867;&#12428;&#12391;&#12365;&#12414;&#12377;</p>
+        <h1 id="app-title">&#36023;&#12356;&#29289;&#35328;&#12356;&#35379;&#12484;&#12540;&#12523;</h1>
         <p class="description">
-          買った物と金額を入力すると、もっともらしい言い訳を考えます。
+          &#36023;&#12387;&#12383;&#29289;&#12392;&#37329;&#38989;&#12434;&#20837;&#12428;&#12427;&#12392;&#12289;&#19968;&#30636;&#12384;&#12369;&#12300;&#12414;&#12354;&#12381;&#12428;&#12418;&#12354;&#12426;&#12363;&#12301;&#12392;&#24605;&#12360;&#12427;&#35328;&#12356;&#35379;&#12434;&#32771;&#12360;&#12414;&#12377;&#12290;
         </p>
         <p class="input-note">
-          商品名には、個人名や住所などの個人情報を入力しないでください。
+          &#21830;&#21697;&#12395;&#21512;&#12431;&#12394;&#12356;&#29702;&#23624;&#12399;&#12391;&#12365;&#12427;&#12384;&#12369;&#36991;&#12369;&#12414;&#12377;&#12290;&#21336;&#30330;&#12398;&#20986;&#36027;&#12395;&#12300;100&#22238;&#20351;&#12360;&#12400;&#12301;&#12399;&#12394;&#12427;&#12409;&#12367;&#35328;&#12356;&#12414;&#12379;&#12435;&#12290;
         </p>
 
         <form id="excuse-form" class="form" novalidate>
           <div class="field">
-            <label for="item-name">商品名</label>
+            <label for="item-name">&#21830;&#21697;&#21517;</label>
             <input
               id="item-name"
               name="itemName"
               type="text"
               inputmode="text"
-              placeholder="スニーカー"
+              placeholder="&#12473;&#12491;&#12540;&#12459;&#12540;"
               autocomplete="off"
             />
             <p id="item-error" class="error" aria-live="polite"></p>
           </div>
 
           <div class="field">
-            <label for="amount">金額</label>
+            <label for="amount">&#37329;&#38989;</label>
             <div class="amount-input">
               <input
                 id="amount"
@@ -47,13 +47,13 @@
                 step="1"
                 enterkeyhint="done"
               />
-              <span class="unit" aria-hidden="true">円</span>
+              <span class="unit" aria-hidden="true">&#20870;</span>
             </div>
             <p id="amount-error" class="error" aria-live="polite"></p>
           </div>
 
           <button id="generate-button" class="primary-button" type="submit">
-            言い訳を考える
+            &#35328;&#12356;&#35379;&#12434;&#32771;&#12360;&#12427;
           </button>
           <p id="generation-status" class="generation-status hidden" aria-live="polite"></p>
         </form>
@@ -62,7 +62,7 @@
           id="generation-error"
           class="message message-error hidden"
           aria-live="polite"
-          aria-label="入力エラー"
+          aria-label="&#20837;&#21147;&#12456;&#12521;&#12540;"
         >
           <p id="generation-error-text" class="message-text"></p>
         </section>
@@ -71,28 +71,28 @@
           id="result-section"
           class="result hidden"
           aria-live="polite"
-          aria-label="言い訳の結果"
+          aria-label="&#35328;&#12356;&#35379;&#12398;&#32080;&#26524;"
         >
           <div class="result-header">
-            <h2>今回の言い訳</h2>
+            <h2>&#20170;&#22238;&#12398;&#35328;&#12356;&#35379;</h2>
             <span id="copy-status" class="copy-status" role="status" aria-live="polite"></span>
           </div>
           <p id="result-meta" class="result-meta hidden"></p>
           <p id="result-text" class="result-text"></p>
           <div class="result-actions">
             <button id="regenerate-button" class="secondary-button" type="button">
-              別の言い訳を考える
+              &#21029;&#12398;&#35328;&#12356;&#35379;&#12434;&#32771;&#12360;&#12427;
             </button>
             <button id="copy-button" class="secondary-button" type="button">
-              コピーする
+              &#12467;&#12500;&#12540;&#12377;&#12427;
             </button>
           </div>
         </section>
 
-        <p class="version">version <span id="app-version-text">2026.07.16-hybrid-3</span></p>
+        <p class="version">version <span id="app-version-text">2026.07.17-human-logic-2</span></p>
       </section>
     </main>
 
-    <script src="script.js?v=20260716-hybrid-3"></script>
+    <script src="script.js?v=20260717-human-logic-2"></script>
   </body>
 </html>
